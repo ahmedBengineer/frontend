@@ -1,0 +1,1112 @@
+{
+    "id": 137,
+    "parent": null,
+    "worker_agents": [],
+    "remaining_minutes": 0,
+    "custom_features": [
+        {
+            "id": 109,
+            "name": "cancel_appointment",
+            "description": "Permanently cancel the exact affected appointment. Call only after summarizing the original doctor, date, and time and receiving explicit confirmation that the caller wants cancellation. appointment_id must come from startup context. Report cancellation only after this DELETE succeeds.",
+            "method": "DELETE",
+            "url": "https://dev.smartconvo.pentagonai.co/api/integrations/hms/appointments/{appointment_id}/",
+            "headers": {
+                "Authorization": "Token 27362a88f315cf6cfadaa072f640b0253249c240"
+            },
+            "query_template": {},
+            "body_template": {},
+            "response_payload": {},
+            "request_parameters": {
+                "appointment_id": {
+                    "type": "string",
+                    "global": true,
+                    "required": true,
+                    "description": "Exact appointment UUID returned by check_appointment; never infer it from patient details."
+                }
+            },
+            "response_parameters": {},
+            "parameters": {
+                "appointment_id": {
+                    "type": "string",
+                    "global": true,
+                    "required": true,
+                    "description": "Exact affected appointment UUID returned in startup context; never guess it."
+                }
+            },
+            "omit_nulls": false,
+            "summarize_conversation": false,
+            "timeout_ms": 30000,
+            "speak_during_execution": {
+                "enabled": false,
+                "message": "",
+                "instructions": "",
+                "delay_seconds": 0
+            }
+        },
+        {
+            "id": 71,
+            "name": "search_hospital_information",
+            "description": "Read-only search for verified, non-patient-specific General Practice Hospital facts. Use for address, opening hours, parking, departments, hospital policies, insurance or panel participation, and charges not tied to a specific doctor. Call when the caller asks for one of these facts and answer only from the returned answer. Do not use for medical advice, emergencies, doctor profiles or fees, availability, or appointment records/actions. If no answer is returned, say the information could not be verified; do not guess.",
+            "method": "POST",
+            "url": "https://dev.smartconvo.pentagonai.co/api/faq/faqs/search/",
+            "headers": {
+                "Authorization": "Token 27362a88f315cf6cfadaa072f640b0253249c240"
+            },
+            "query_template": {},
+            "body_template": {
+                "number": 924232460261,
+                "question": "{question}"
+            },
+            "response_payload": {
+                "answer": "{answer}"
+            },
+            "request_parameters": {
+                "question": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "The caller's complete hospital-information question, preserving decisive details such as department, service, insurance/panel name, or charge type. only in english"
+                }
+            },
+            "response_parameters": {
+                "answer": {
+                    "type": "string",
+                    "global": false,
+                    "required": false,
+                    "description": "Verified hospital-information answer to summarize for the caller."
+                }
+            },
+            "parameters": {
+                "question": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "The caller's complete hospital-information question, preserving decisive details such as department, service, insurance/panel name, or charge type. only in english"
+                }
+            },
+            "omit_nulls": false,
+            "summarize_conversation": false,
+            "timeout_ms": 30000,
+            "speak_during_execution": {
+                "enabled": false,
+                "message": "",
+                "delay_seconds": 0
+            }
+        },
+        {
+            "id": 108,
+            "name": "get_doctor_availability",
+            "description": "Get available times for one doctor on one date. Call when doctor_name and date are known. Offer only available_slots.",
+            "method": "GET",
+            "url": "https://dev.smartconvo.pentagonai.co/api/integrations/hms/doctors/availability/?doctor_name=\"{doctor_name}\"&date={date}",
+            "headers": {
+                "Authorization": "Token 27362a88f315cf6cfadaa072f640b0253249c240"
+            },
+            "query_template": {},
+            "body_template": {},
+            "response_payload": {},
+            "request_parameters": {
+                "date": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Appointment date as YYYY-MM-DD."
+                },
+                "doctor_name": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Exact verified doctor name."
+                }
+            },
+            "response_parameters": {},
+            "parameters": {
+                "date": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Appointment date as YYYY-MM-DD."
+                },
+                "doctor_name": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Exact verified doctor name."
+                }
+            },
+            "omit_nulls": false,
+            "summarize_conversation": false,
+            "timeout_ms": 30000,
+            "speak_during_execution": {
+                "enabled": false,
+                "message": "",
+                "delay_seconds": 0
+            }
+        },
+        {
+            "id": 106,
+            "name": "find_appointments_by_patient_name",
+            "description": "Read-only lookup of existing appointments using the patient exact full name. Use for appointment confirmation/details, follow-up inquiries, or before update/cancellation. If no match is returned, verify the spelling once. If multiple records match, do not read every record aloud; identify the correct one with one caller-known detail at a time, such as doctor, date, or phone digits, and do not expose unrelated patient information. Return the selected appointment UUID for update or cancellation.",
+            "method": "GET",
+            "url": "https://dev.smartconvo.pentagonai.co/api/integrations/hms/appointments/?patient={patient_name}",
+            "headers": {
+                "Authorization": "Token 27362a88f315cf6cfadaa072f640b0253249c240"
+            },
+            "query_template": {},
+            "body_template": {},
+            "response_payload": {},
+            "request_parameters": {
+                "patient_name": {
+                    "type": "string",
+                    "global": true,
+                    "required": true,
+                    "description": "Patient exact full name as provided by the caller; verify spelling only when unclear or no match is found."
+                }
+            },
+            "response_parameters": {},
+            "parameters": {
+                "patient_name": {
+                    "type": "string",
+                    "global": true,
+                    "required": true,
+                    "description": "Patient exact full name as provided by the caller; verify spelling only when unclear or no match is found."
+                }
+            },
+            "omit_nulls": false,
+            "summarize_conversation": false,
+            "timeout_ms": 30000,
+            "speak_during_execution": {
+                "enabled": false,
+                "message": "",
+                "instructions": "",
+                "delay_seconds": 0
+            }
+        },
+        {
+            "id": 107,
+            "name": "update_appointment",
+            "description": "Reschedule the exact affected appointment after the caller selects an available slot and explicitly confirms the final doctor, date, and time. Requires the appointment UUID from startup context. Include only fields that are changing; omitted fields remain unchanged. Whenever doctor, date, or time changes, verify the final slot with get_doctor_availability first. Report success only after this PATCH succeeds.",
+            "method": "PATCH",
+            "url": "https://dev.smartconvo.pentagonai.co/api/integrations/hms/appointments/{appointment_id}/",
+            "headers": {
+                "Authorization": "Token 27362a88f315cf6cfadaa072f640b0253249c240"
+            },
+            "query_template": {},
+            "body_template": {
+                "doctor_id": "{doctor_id}",
+                "time_slot": "{time_slot}",
+                "appointment_date": "{appointment_date}"
+            },
+            "response_payload": {},
+            "request_parameters": {
+                "phone": {
+                    "type": "string",
+                    "global": true,
+                    "required": false,
+                    "description": "New confirmed patient contact number; omit to preserve the existing number."
+                },
+                "status": {
+                    "enum": [
+                        "pending",
+                        "confirmed",
+                        "completed",
+                        "cancelled",
+                        "delayed",
+                        "no_show"
+                    ],
+                    "type": "string",
+                    "global": true,
+                    "required": false,
+                    "description": "Optional appointment status. Omit during doctor/date/time rescheduling and use cancel_appointment for cancellation."
+                },
+                "doctor_id": {
+                    "type": "string",
+                    "global": true,
+                    "required": false,
+                    "description": "New doctor UUID from list_doctors; omit to preserve the existing doctor."
+                },
+                "time_slot": {
+                    "type": "string",
+                    "global": true,
+                    "required": false,
+                    "description": "New exact available time slot; omit to preserve the existing time."
+                },
+                "patient_name": {
+                    "type": "string",
+                    "global": true,
+                    "required": false,
+                    "description": "New confirmed patient full name; omit to preserve the existing name."
+                },
+                "appointment_id": {
+                    "type": "string",
+                    "global": true,
+                    "required": true,
+                    "description": "Exact appointment UUID returned by check_appointment."
+                },
+                "appointment_date": {
+                    "type": "string",
+                    "global": true,
+                    "required": false,
+                    "description": "New date in YYYY-MM-DD format; omit to preserve the existing date."
+                },
+                "appointment_type": {
+                    "enum": [
+                        "consultation",
+                        "followup"
+                    ],
+                    "type": "string",
+                    "global": true,
+                    "required": false,
+                    "description": "New type, consultation or followup; omit to preserve the existing type."
+                }
+            },
+            "response_parameters": {},
+            "parameters": {
+                "doctor_id": {
+                    "type": "string",
+                    "global": true,
+                    "required": false,
+                    "description": "New doctor UUID returned by list_doctors; omit when keeping the original doctor."
+                },
+                "time_slot": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed exact available time slot returned by get_doctor_availability."
+                },
+                "appointment_id": {
+                    "type": "string",
+                    "global": true,
+                    "required": true,
+                    "description": "Exact affected appointment UUID returned in startup context; never guess it."
+                },
+                "appointment_date": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed new appointment date in YYYY-MM-DD format."
+                }
+            },
+            "omit_nulls": true,
+            "summarize_conversation": false,
+            "timeout_ms": 30000,
+            "speak_during_execution": {
+                "enabled": false,
+                "message": "",
+                "instructions": "",
+                "delay_seconds": 0
+            }
+        },
+        {
+            "id": 114,
+            "name": "get_doctor_by_specialization",
+            "description": "this tool is used to get doctor by specialization",
+            "method": "GET",
+            "url": "https://dev.smartconvo.pentagonai.co/api/integrations/hms/doctors/by-specialization/?name={specialization}",
+            "headers": {
+                "Authorization": "Token 27362a88f315cf6cfadaa072f640b0253249c240"
+            },
+            "query_template": {},
+            "body_template": {},
+            "response_payload": {},
+            "request_parameters": {
+                "specialization": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "this is the specialization "
+                }
+            },
+            "response_parameters": {},
+            "parameters": {
+                "specialization": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "this is the specialization "
+                }
+            },
+            "omit_nulls": false,
+            "summarize_conversation": false,
+            "timeout_ms": 30000,
+            "speak_during_execution": {
+                "enabled": false,
+                "message": "",
+                "delay_seconds": 0
+            }
+        },
+        {
+            "id": 113,
+            "name": "get_doctors_specialization",
+            "description": "this tool is use to get specialization of a doctors",
+            "method": "GET",
+            "url": "https://dev.smartconvo.pentagonai.co/api/integrations/hms/doctors/specializations/",
+            "headers": {
+                "Authorization": "Token 27362a88f315cf6cfadaa072f640b0253249c240"
+            },
+            "query_template": {},
+            "body_template": {},
+            "response_payload": {},
+            "request_parameters": {},
+            "response_parameters": {},
+            "parameters": {},
+            "omit_nulls": false,
+            "summarize_conversation": false,
+            "timeout_ms": 30000,
+            "speak_during_execution": {
+                "enabled": false,
+                "message": "",
+                "delay_seconds": 0
+            }
+        },
+        {
+            "id": 115,
+            "name": "get_doctor_by_name",
+            "description": "this tool is used to get doctor info by name",
+            "method": "GET",
+            "url": "https://dev.smartconvo.pentagonai.co/api/integrations/hms/doctors/by-name/?name={name}",
+            "headers": {
+                "Authorization": "Token 27362a88f315cf6cfadaa072f640b0253249c240"
+            },
+            "query_template": {},
+            "body_template": {},
+            "response_payload": {},
+            "request_parameters": {
+                "name": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "this is the name of the doctor "
+                }
+            },
+            "response_parameters": {},
+            "parameters": {
+                "name": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "this is the name of the doctor "
+                }
+            },
+            "omit_nulls": false,
+            "summarize_conversation": false,
+            "timeout_ms": 30000,
+            "speak_during_execution": {
+                "enabled": false,
+                "message": "",
+                "delay_seconds": 0
+            }
+        },
+        {
+            "id": 105,
+            "name": "create_appointment",
+            "description": "Create the appointment after the caller confirms the final summary.",
+            "method": "POST",
+            "url": "https://dev.smartconvo.pentagonai.co/api/integrations/hms/appointments/",
+            "headers": {
+                "Authorization": "Token 27362a88f315cf6cfadaa072f640b0253249c240"
+            },
+            "query_template": {},
+            "body_template": {
+                "phone": "{phone}",
+                "time_slot": "{time_slot}",
+                "doctor_name": "{doctor_name}",
+                "patient_name": "{patient_name}",
+                "appointment_date": "{appointment_date}",
+                "appointment_type": "consultation"
+            },
+            "response_payload": {},
+            "request_parameters": {
+                "phone": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed patient contact number"
+                },
+                "time_slot": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Exact selected value from available_slots also mentioned AM and PM"
+                },
+                "patient_id": {
+                    "type": "string",
+                    "global": false,
+                    "required": false,
+                    "description": "this is a patient id you have based on the caller information "
+                },
+                "doctor_name": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed doctor name"
+                },
+                "patient_name": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed patient name"
+                },
+                "appointment_date": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed date as YYYY-MM-DD"
+                }
+            },
+            "response_parameters": {},
+            "parameters": {
+                "phone": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed patient contact number"
+                },
+                "time_slot": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Exact selected value from available_slots also mentioned AM and PM"
+                },
+                "patient_id": {
+                    "type": "string",
+                    "global": false,
+                    "required": false,
+                    "description": "this is a patient id you have based on the caller information "
+                },
+                "doctor_name": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed doctor name"
+                },
+                "patient_name": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed patient name"
+                },
+                "appointment_date": {
+                    "type": "string",
+                    "global": false,
+                    "required": true,
+                    "description": "Confirmed date as YYYY-MM-DD"
+                }
+            },
+            "omit_nulls": false,
+            "summarize_conversation": false,
+            "timeout_ms": 30000,
+            "speak_during_execution": {
+                "enabled": false,
+                "message": "",
+                "delay_seconds": 0
+            }
+        }
+    ],
+    "twilio_phone_numbers": [
+        "923331251264",
+        "924232460262"
+    ],
+    "voice_s3": null,
+    "industry": "municipal services",
+    "timezone": "Asia/Karachi",
+    "should_append_developer_message": false,
+    "name": "hospital-workflow",
+    "description": "Multilingual voice front-desk assistant for General Practice Hospital, focused on hospital information, doctor discovery, and appointment management.",
+    "voice_id": "794f9389-aac1-45b6-b726-9d9369183238",
+    "voice_status": "pending",
+    "voice_job_id": null,
+    "instructions": "# Role\nYou are the voice front-desk assistant for General Practice Hospital.\n\nHelp callers find doctors, check availability, and book, review, update, or cancel appointments. Provide only verified hospital information.\n\nYou are not a doctor. Never diagnose or prescribe.\n\n# Language\n\n* Begin in Urdu.\n* Follow a clear language change naturally.\n* Allow natural Urdu-English code-switching.\n* In Urdu, use feminine forms for yourself.\n* Never assume the caller’s or patient’s gender.\n\n# Brevity\n\n* MINIMIZE SPOKEN WORDS.\n* Default to one sentence of at most 12 words.\n* Use a second sentence only for a necessary question.\n* Speak only the result and the next required question.\n* Ask only one question at a time.\n* Do not acknowledge every answer.\n* Do not announce future questions.\n* Do not repeat accepted information or selected options.\n\nStandard phrases:\n\n* Date: “کون سا دن یا تاریخ چاہیے؟”\n* Name: “مریض کا پورا نام؟”\n* Clarification: “معذرت، دوبارہ بتا دیں؟”\n* More help: “کیا میں کسی اور چیز میں مدد کر سکتی ہوں؟”\n* Closing: “شکریہ، خدا حافظ۔”\n\n# Understanding the Caller\n\nUnderstand the caller from spoken meaning, audio, and conversation context.\n\nTranscription may contain incorrect words, language, or script. If the spoken meaning is understandable, continue naturally.\n\nFor a yes-or-no question:\n\n* Any direct response without negation, correction, or an alternative means YES.\n* The response does not need to contain “yes.”\n* Clear negatives include نہیں, نہ, مت کریں, غلط, دوسرا, no, and equivalent corrections.\n\n# Safety and Privacy\n\nFor severe chest pain, breathing difficulty, unconsciousness, stroke signs, heavy bleeding, poisoning, overdose, seizure, serious injury, pregnancy bleeding, severe pregnancy pain, or suicidal intent:\n\n* Stop the normal workflow.\n* Say:\n\n“فوراً ریسکیو ایک ایک دو دو پر کال کریں یا ایمرجنسی جائیں۔”\n\nFor non-emergency symptoms:\n\n* Do not diagnose or prescribe.\n* Suggest a specialty only from verified doctor information.\n\nThe caller and patient may be different people. Never expose another patient’s information.\n\n# Tool Rules\n\n* Immediately before every tool call, speak one brief, natural sentence explaining the specific action currently being performed.\n* Explicitly describe what you are searching, checking, booking, updating, cancelling, or verifying.\n* When the action requires processing or lookup time, briefly ask the caller to wait.\n\n# Dates\n\nAsk naturally:\n\n“کون سا دن یا تاریخ چاہیے؟”\n\nResolve relative dates internally using the hospital timezone.\n\nSpeak dates naturally.\n\nExample:\n\nTool value: `2026-08-03`\n\nSay:\n\n“تین اگست”\n\nNever say:\n\n“2026-08-03”\n\n# Check Availability\n\nWhen one doctor and one date are known:\n\n1. Briefly tell the caller that you are looking for the doctor’s available slots and ask them to wait.\n2. Call `get_doctor_availability`.\n3. Offer only returned `available_slots`.\n\n# Book Appointment\n\nCollect in this order:\n\n1. Doctor\n2. One specific date\n3. One returned available slot\n4. Patient’s full name\n5. Patient contact number\n6. Final confirmation\n\nAsk only for the next missing value.\n\n## Phone Number\n\nIn Urdu, ask:\n\n“کیا بکنگ کے لیے یہی کالر نمبر استعمال کر دوں؟”\n\nA direct response without negation or correction selects the caller number.\n\nIf rejected, ask:\n\n“مریض کا رابطہ نمبر بتا دیں۔”\n\nNever guess, alter, or add phone digits.\n\nRead the phone number digit by digit in the final summary.\n\n## Final Confirmation\n\nBefore booking, summarize once:\n\n* Patient name\n* Doctor\n* Natural date and exact time\n* Phone number digit by digit\n\nAfter confirmation:\n\n1. Briefly tell the caller that you are now booking the appointment.\n2. Call `create_appointment` exactly once.\n\nIf `booking_state` is `booked`, say completely:\n\n“آپ کی اپائنٹمنٹ بک ہوگئی ہے۔ کیا میں کسی اور چیز میں مدد کر سکتی ہوں؟”\n\n# Ideal Booking Flow\n\nAssistant: “آپ کس ڈاکٹر کے ساتھ اپائنٹمنٹ چاہتے ہیں؟”\n\nCaller: “ڈاکٹر عمر کے ساتھ۔”\n\nAssistant: “کون سا دن یا تاریخ چاہیے؟”\n\nCaller: “تین اگست۔”\n\nAssistant: “میں ڈاکٹر کے دستیاب اوقات دیکھ رہی ہوں، ایک لمحہ انتظار کیجیے۔”\n\nAction: Call `get_doctor_availability`.\n\nAssistant: “دس بجے اور دس  تیس دستیاب ہیں۔ کون سا وقت رکھوں؟”\n\nCaller: “دس تیس۔”\n\nAssistant: “مریض کا پورا نام؟”\n\nCaller: “محمد ابوبکر۔”\n\nAssistant: “یہ consultation ہے یا follow-up؟”\n\nCaller: “consultation۔”\n\nAssistant: “کیا بکنگ کے لیے یہی کالر نمبر استعمال کر دوں؟”\n\nCaller: “ٹھیک ہے۔”\n\nAssistant gives one natural summary using the exact time, then asks:\n\n“کیا میں اپائنٹمنٹ بک کر دوں؟”\n\nCaller: “جی۔”\n\nAssistant: “میں آپ کی اپائنٹمنٹ بک کر رہی ہوں، براہِ کرم ایک لمحہ انتظار کیجیے۔”\n\nAction: Call `create_appointment`.\n\nAfter success:\n\nAssistant: “آپ کی اپائنٹمنٹ بک ہوگئی ہے۔ کیا میں کسی اور چیز میں مدد کر سکتی ہوں؟”\n\nCaller: “نہیں، شکریہ۔”\n\nAssistant: “شکریہ، خدا حافظ۔”\n\nAction: Call `end_call`.\n\n# Hospital Information\n\nUse `search_hospital_information` for:\n\n* Address\n* Opening hours\n* Parking\n* Departments\n* Policies\n* Insurance panels\n* Hospital-level charges\n\nBefore calling it:\n\n* Briefly tell the caller exactly what information you are checking.\n\nAnswer only from its result.\n\nVerified example:\n\n“جی، ہسپتال میں پارکنگ موجود ہے۔”\n\nIf it cannot be verified, say:\n\n“یہ معلومات ابھی تصدیق نہیں ہو سکیں۔”\n\nif caller ask you to transfer to Ahmed use this tool `tranfer_call` and transfer to this number 03331251264",
+    "status": "active",
+    "is_active": true,
+    "created_at": "2026-07-24T05:20:07.475662-05:00",
+    "welcome_phrase": "جنرل پریکٹس ہسپتال میں خوش آمدید۔ آج میں آپ کی کس طرح مدد کر سکتی ہوں؟",
+    "processing_phrases": [],
+    "silence_phrase": "کیا آپ ابھی موجود ہیں؟",
+    "voice_stability": 82,
+    "voice_clarity": 50,
+    "voice_style": 98,
+    "voice_speed": 74,
+    "speaker_boost": false,
+    "goodbye_phrase": "جنرل پریکٹس ہسپتال سے رابطہ کرنے کا شکریہ۔ خدا حافظ۔",
+    "agent_config": {
+        "llm": {
+            "user": "NOT_GIVEN",
+            "model": "gpt-realtime-2.1-mini",
+            "store": "NOT_GIVEN",
+            "top_p": "NOT_GIVEN",
+            "client": null,
+            "api_key": "NOT_GIVEN",
+            "timeout": null,
+            "base_url": "https://pentagon-ai-voice-transcribe-eus2.openai.azure.com",
+            "metadata": "NOT_GIVEN",
+            "provider": "azure",
+            "verbosity": "NOT_GIVEN",
+            "is_realtime": true,
+            "temperature": "NOT_GIVEN",
+            "tool_choice": "auto",
+            "service_tier": "NOT_GIVEN",
+            "_provider_fmt": "NOT_GIVEN",
+            "prompt_cache_key": "NOT_GIVEN",
+            "provider_options": {
+                "speed": 1.2,
+                "voice": "marin",
+                "turn_detection": {
+                    "type": "semantic_vad",
+                    "eagerness": "auto",
+                    "create_response": true,
+                    "interrupt_response": true
+                },
+                "azure_deployment": "gpt-realtime-2-1-mini",
+                "input_audio_transcription": {
+                    "model": "gpt-4o-transcribe",
+                    "prompt": "General Practice Hospital front-desk conversation. Transcribe the caller faithfully in the language and script spoken. Preserve names, dates, times, phone digits, doctor names, and medical terms. Do not translate, answer, correct, or add words."
+                }
+            },
+            "reasoning_effort": "low",
+            "safety_identifier": "NOT_GIVEN",
+            "_strict_tool_schema": true,
+            "parallel_tool_calls": "NOT_GIVEN",
+            "max_completion_tokens": "NOT_GIVEN"
+        },
+        "tts": {
+            "voice": "794f9389-aac1-45b6-b726-9d9369183238"
+        },
+        "default_tool_names": [
+            "end_call",
+            "wait_for_user"
+        ],
+        "noise_cancellation": {
+            "vad": {
+                "sensitivity": 6.0,
+                "speech_hold_duration": 0.03,
+                "minimum_speech_duration": 0.0
+            },
+            "model": "QUAIL_VF_L",
+            "provider": "ai_coustics",
+            "enhancement_level": 0.8
+        },
+        "include_default_tools": true,
+        "INCLUDE_SESSION_MEMORY_IN_TOOL_RESPONSES": false
+    },
+    "type": "Inbound",
+    "scraping_websites": [],
+    "is_default": false,
+    "tool_scope": "default_worker",
+    "include_default_tools": true,
+    "default_tool_names": [
+        "end_call",
+        "transfer_call"
+    ],
+    "startup_tool_calls": {
+        "get_doctors_specialization": {}
+    },
+    "announce_transfer": false,
+    "guardrail": {
+        "medical_safety": "Do not prescribe, recommend, or suggest medications. Always advise consulting a licensed healthcare professional."
+    },
+    "agent_type": "workflow",
+    "json_object": {
+        "state": {
+            "fields": {
+                "booking.slot": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "normalizers": [
+                        "strip"
+                    ]
+                },
+                "booking.phone": {
+                    "type": "string",
+                    "error": "Provide a valid phone number with 10 to 15 digits.",
+                    "pattern": "^\\d{10,15}$",
+                    "nullable": true,
+                    "maxLength": 15,
+                    "minLength": 10,
+                    "normalizers": [
+                        "digits_only"
+                    ]
+                },
+                "information.answer": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 5000,
+                    "minLength": 1,
+                    "normalizers": [
+                        "strip"
+                    ]
+                },
+                "booking.doctor_name": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 160,
+                    "minLength": 2,
+                    "normalizers": [
+                        "strip",
+                        "collapse_spaces"
+                    ]
+                },
+                "booking.patient_name": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 160,
+                    "minLength": 2,
+                    "normalizers": [
+                        "strip",
+                        "collapse_spaces"
+                    ]
+                },
+                "information.question": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 2000,
+                    "minLength": 2,
+                    "normalizers": [
+                        "strip",
+                        "collapse_spaces"
+                    ]
+                },
+                "session.inbound_phone": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 15,
+                    "minLength": 10,
+                    "normalizers": [
+                        "digits_only"
+                    ]
+                },
+                "booking.requested_date": {
+                    "type": "string",
+                    "error": "Appointment date must be YYYY-MM-DD.",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "nullable": true,
+                    "normalizers": [
+                        "strip"
+                    ]
+                },
+                "booking.appointment_response": {
+                    "type": "object",
+                    "nullable": true
+                }
+            },
+            "dependencies": {
+                "booking.doctor_name": [
+                    "booking.requested_date",
+                    "booking.slot"
+                ],
+                "booking.requested_date": [
+                    "booking.slot"
+                ]
+            }
+        },
+        "assistant": {
+            "routing_instructions": [
+                "ENDING HAS HIGHEST PRIORITY. If the caller explicitly asks to end the call, says goodbye, says they need nothing else, declines further help, or gives a closing response to an offer of more help, immediately call end_call with farewell_message: 'آپ کے کال کرنے کا شکریہ۔ خدا حافظ۔'. Examples include: نہیں, نہیں شکریہ, نہیں نہیں بہت شکریہ, بس شکریہ, بس اتنا ہی, اور کچھ نہیں, no, no thanks, that's all, nothing else. Do not run a workflow and do not ask whether they need anything else again.",
+                "For appointment booking, call run_workflow with create_appointment.",
+                "For hospital information, call run_workflow with general_information.",
+                "Handle transfer requests with transfer_call."
+            ],
+            "run_workflow_tool_description": "Run the workflow selected for the caller's current request.",
+            "greeting_from_agent_definition": true,
+            "use_agent_definition_instructions": false
+        },
+        "workflows": {
+            "slot_retry": {
+                "task_group": {
+                    "doctor_and_slot_reselection": {
+                        "kind": "collect",
+                        "tools": [
+                            "get_doctors_specialization",
+                            "get_doctor_by_specialization",
+                            "get_doctor_by_name",
+                            "get_doctor_availability"
+                        ],
+                        "collect": {
+                            "slot": {
+                                "state": "booking.slot",
+                                "schema": {
+                                    "type": "string",
+                                    "description": "New selected slot from refreshed available_slots; it must differ from the rejected current slot."
+                                }
+                            },
+                            "doctor_name": {
+                                "state": "booking.doctor_name",
+                                "schema": {
+                                    "type": "string",
+                                    "description": "Exact verified doctor name used in the refreshed availability lookup."
+                                }
+                            },
+                            "requested_date": {
+                                "state": "booking.requested_date",
+                                "schema": {
+                                    "type": "string",
+                                    "description": "Exact refreshed availability date formatted YYYY-MM-DD."
+                                }
+                            }
+                        },
+                        "description": "Refresh availability and replace a slot rejected during booking.",
+                        "entry_prompt": "",
+                        "instructions": [
+                            "This task only recovers from a slot rejected by create_appointment.",
+                            "Treat the authoritative current booking.slot as the failed slot. Never offer or select that failed value again, even if the refreshed availability response repeats it.",
+                            "Call get_doctor_availability again with the authoritative doctor_name and requested_date before offering any replacement.",
+                            "Offer only values from the new available_slots response after excluding the failed slot. Never invent a time.",
+                            "Ask one short Urdu question for the caller to choose one remaining slot.",
+                            "Treat the refreshed available_slots as a closed authoritative list. Preserve its order and count, and speak each remaining value exactly once without adding, removing, merging, or substituting a time.",
+                            "Convert each value generically without changing its numeric hour or minutes: use 'بجے' for zero minutes and 'بج کر [minutes] منٹ' for non-zero minutes.",
+                            "Speak hours and minutes as Urdu words only. Never read AM, PM, a colon, or a raw numeric time aloud; correct the wording before responding rather than substituting another time.",
+                            "Match the caller's selection to one exact original value from the refreshed tool response. If it is absent, repeat the valid values and ask again instead of completing.",
+                            "When the replacement is verified, call complete_doctor_and_slot_reselection once with doctor_name, requested_date, and the new slot.",
+                            "After completion, control returns to confirmation. Do not summarize or book the appointment in this task.",
+                            "If the caller changes the doctor or date, verify the new value with the appropriate doctor tool and refresh availability before completing."
+                        ],
+                        "completion_validators": [
+                            {
+                                "tool": "get_doctor_availability",
+                                "type": "equals_tool_argument",
+                                "field": "doctor_name",
+                                "argument": "doctor_name"
+                            },
+                            {
+                                "tool": "get_doctor_availability",
+                                "type": "equals_tool_argument",
+                                "field": "requested_date",
+                                "argument": "date"
+                            },
+                            {
+                                "tool": "get_doctor_availability",
+                                "type": "value_in_tool_response",
+                                "field": "slot",
+                                "paths": [
+                                    "available_slots",
+                                    "data.available_slots",
+                                    "result.available_slots",
+                                    "data.result.available_slots"
+                                ]
+                            }
+                        ],
+                        "on_enter_instructions": "The current booking.slot was rejected by create_appointment and is the failed slot. Using the existing booking.doctor_name and booking.requested_date, call get_doctor_availability immediately. Do not ask for the doctor or date again unless the caller changes one.",
+                        "required_tool_calls_before_complete": [
+                            "get_doctor_availability"
+                        ]
+                    }
+                },
+                "task_order": [
+                    "doctor_and_slot_reselection"
+                ],
+                "description": "Internal only.",
+                "start_phrase": "",
+                "interruptible_by": [
+                    "general_information"
+                ],
+                "summarize_chat_ctx": false,
+                "resume_after_interrupt": true
+            },
+            "create_appointment": {
+                "task_group": {
+                    "personal_details": {
+                        "kind": "collect",
+                        "tools": [],
+                        "collect": {
+                            "phone": {
+                                "state": "booking.phone",
+                                "schema": {
+                                    "type": "string",
+                                    "description": "Confirmed patient contact number. Use the inbound calling number only after the caller accepts it."
+                                }
+                            },
+                            "patient_name": {
+                                "state": "booking.patient_name",
+                                "schema": {
+                                    "type": "string",
+                                    "description": "Patient's confirmed full name."
+                                }
+                            }
+                        },
+                        "description": "Collect the patient full name and confirmed booking phone number.",
+                        "entry_prompt": "مریض کا پورا نام؟",
+                        "instructions": [
+                            "Collect patient_name and phone only.",
+                            "Always use feminine Urdu self-reference and keep every reply to one short sentence or question.",
+                            "Do not ask for appointment type because the current create_appointment body fixes it as consultation.",
+                            "If session.inbound_phone is available, ask whether the same calling number should be used.",
+                            "After receiving patient_name, ask exactly: 'کیا بکنگ کے لیے یہی کالر نمبر استعمال کر دوں؟' Do not infer consent from the patient name or from silence.",
+                            "Do not complete this task until phone consent is explicit and recognizable, or the caller provides a different valid phone number.",
+                            "Accept phone consent only from a recognizable affirmative such as جی, ہاں, بالکل, or ٹھیک ہے. Treat unrelated or garbled transcription as unclear and ask again.",
+                            "If accepted, use session.inbound_phone as phone. If rejected, ask for the patient's contact number.",
+                            "Example: after 'محمد ابو بکر', ask only 'کیا بکنگ کے لیے یہی کالر نمبر استعمال کر دوں؟' After a clear 'جی', silently use session.inbound_phone and complete the task; after unclear audio, repeat only that question.",
+                            "Complete the task once with patient_name and phone together."
+                        ],
+                        "on_enter_instructions": "First process every relevant value already present in the caller's latest turn. Do not repeat a question whose answer is already known. Only when the next required value is missing, ask exactly: 'مریض کا پورا نام؟'",
+                        "required_tool_calls_before_complete": []
+                    },
+                    "confirm_and_create": {
+                        "kind": "action",
+                        "action_tool": "create_appointment",
+                        "description": "Read the final booking summary, obtain confirmation, and call the real create_appointment endpoint once.",
+                        "instructions": [
+                            "Read one concise summary containing patient name, doctor name, natural date, exact time, and phone digits.",
+                            "Always use feminine Urdu self-reference and keep the summary and question concise.",
+                            "Speak the date naturally in Urdu rather than reading YYYY-MM-DD, speak the time naturally, and read every phone digit individually.",
+                            "Convert only the authoritative booking.slot value to natural spoken Urdu. Preserve its numeric hour and minutes exactly; use 'بجے' for zero minutes and 'بج کر [minutes] منٹ' for non-zero minutes. Never introduce a time from an example or memory.",
+                            "Never say AM, PM, a colon, or raw time digits aloud in the confirmation summary.",
+                            "The doctor_name already contains any doctor honorific; never add another ڈاکٹر before it.",
+                            "Ask the configured confirmation question, then stop speaking and wait for the next caller turn.",
+                            "Never call create_appointment in the same turn as the summary and confirmation question.",
+                            "Only the next caller turn can confirm this exact summary. Do not reuse a previously spoken yes, phone-number consent, slot acceptance, or any earlier affirmative as final confirmation.",
+                            "Accept only an explicit affirmative such as جی, ہاں, بالکل, or ٹھیک ہے. If the response is an unrecognized transcription, unrelated word, or unclear audio, repeat the confirmation question and do not call the tool.",
+                            "If the caller corrects doctor, date, slot, patient name, or phone, regress to the corresponding earlier task.",
+                            "Execute create_appointment only after clear confirmation.",
+                            "If create_appointment fails because the selected slot is unavailable, do not offer, guess, or accept another time in this task. Immediately call switch_workflow with workflow_id: slot_retry. Do not retry create_appointment until that workflow returns with a newly verified slot.",
+                            "After create_appointment succeeds, say exactly: 'آپ کی اپائنٹمنٹ بک ہوگئی ہے۔ کیا میں کسی اور چیز میں مدد کر سکتی ہوں؟' and wait inside this task.",
+                            "Confirmation sequence: speak one summary and ask 'کیا میں اپائنٹمنٹ بک کر دوں؟'; after a clear affirmative, call the confirmation tool; after a successful result, say only the configured success message and never claim failure.",
+                            "If the caller clearly says no, nothing else, or goodbye after the success question, call return_to_router with action=end_call. Do not call finish_confirm_and_create.",
+                            "If the caller says only yes, ask what help is needed. Never interpret that yes as another appointment request and never call create_appointment again.",
+                            "For a clear rejection without a correction, say exactly: 'ٹھیک ہے، اپائنٹمنٹ بک نہیں کی گئی۔' Then call the confirmation tool with confirmed=false in the same turn."
+                        ],
+                        "cancel_message": "ٹھیک ہے، اپائنٹمنٹ بک نہیں کی گئی۔",
+                        "required_state": [
+                            "booking.doctor_name",
+                            "booking.requested_date",
+                            "booking.slot",
+                            "booking.patient_name",
+                            "booking.phone"
+                        ],
+                        "response_state": "booking.appointment_response",
+                        "success_message": "آپ کی اپائنٹمنٹ بک ہوگئی ہے۔ کیا میں کسی اور چیز میں مدد کر سکتی ہوں؟",
+                        "action_arguments": {
+                            "phone": "{state.booking.phone}",
+                            "time_slot": "{state.booking.slot}",
+                            "doctor_name": "{state.booking.doctor_name}",
+                            "patient_name": "{state.booking.patient_name}",
+                            "appointment_date": "{state.booking.requested_date}"
+                        },
+                        "summary_template": "مریض {state.booking.patient_name}، {state.booking.doctor_name}، تاریخ {state.booking.requested_date}، وقت {state.booking.slot}، فون {state.booking.phone}۔",
+                        "confirmation_question": "کیا میں اپائنٹمنٹ بک کر دوں؟",
+                        "on_enter_instructions": "Speak one concise Urdu summary. Convert ISO dates and numeric times to natural spoken Urdu, read phone digits individually, and do not duplicate titles already present in a name. Then ask exactly: مریض {state.booking.patient_name}، {state.booking.doctor_name}، تاریخ {state.booking.requested_date}، وقت {state.booking.slot}، فون {state.booking.phone}۔ کیا میں اپائنٹمنٹ بک کر دوں؟ After asking it, STOP and wait for a new caller turn. Never call any confirmation or action tool now."
+                    },
+                    "doctor_and_slot_selection": {
+                        "kind": "collect",
+                        "tools": [
+                            "get_doctors_specialization",
+                            "get_doctor_by_specialization",
+                            "get_doctor_by_name",
+                            "get_doctor_availability"
+                        ],
+                        "collect": {
+                            "slot": {
+                                "state": "booking.slot",
+                                "schema": {
+                                    "type": "string",
+                                    "description": "Exact selected value from get_doctor_availability.available_slots."
+                                }
+                            },
+                            "doctor_name": {
+                                "state": "booking.doctor_name",
+                                "schema": {
+                                    "type": "string",
+                                    "description": "Exact verified doctor name used in get_doctor_availability."
+                                }
+                            },
+                            "requested_date": {
+                                "state": "booking.requested_date",
+                                "schema": {
+                                    "type": "string",
+                                    "description": "Exact date used in get_doctor_availability, formatted YYYY-MM-DD."
+                                }
+                            }
+                        },
+                        "description": "Select and verify one doctor name, one date, and one returned available slot together.",
+                        "entry_prompt": "آپ کس ڈاکٹر کے ساتھ اپائنٹمنٹ چاہتے ہیں؟",
+                        "instructions": [
+                            "# Role",
+                            "You are completing the doctor and appointment-slot selection step for a hospital voice workflow.",
+                            "Your goal is to obtain and verify: doctor_name, requested_date, and slot.",
+                            "When all three values are verified, call complete_doctor_and_slot_selection once with all three values.",
+                            "# Language and Speaking Style",
+                            "Speak in natural Pakistani Urdu unless the caller clearly changes language.",
+                            "Use feminine self-reference, such as دیکھ رہی ہوں, کروں گی, and بتاؤں گی.",
+                            "Do not infer the caller's gender. Use gender-neutral wording.",
+                            "Keep each response to one short statement and at most one question.",
+                            "Process every useful detail the caller provides, even when multiple details are given together.",
+                            "Do not repeat accepted information.",
+                            "Do not add unnecessary acknowledgements, thanks, explanations, recaps, or offers.",
+                            "Never mention tools, fields, workflows, JSON, routing, or internal state.",
+                            "# Doctor Selection",
+                            "## Doctor named by caller",
+                            "When the caller gives a doctor's name: (1) Call get_doctor_by_name. (2) Use only the verified doctor name returned by the tool. (3) If the date is missing, ask: 'کون سی تاریخ چاہیے؟'",
+                            "## Specialty named by caller",
+                            "When the caller gives a specialty: (1) Call get_doctors_specialization. (2) Match the caller's wording to one exact English specialty returned by that tool. (3) Call get_doctor_by_specialization using that exact English value. (4) Never send Urdu or transliterated specialty text to the doctor lookup tool. (5) Use only doctors returned by the tool.",
+                            "After finding a doctor, ask for the date only when it is still missing.",
+                            "Example: 'ڈاکٹر عمر عزیز مرزا دستیاب ہیں۔ کون سی تاریخ چاہیے؟'",
+                            "If the caller already provided a clear date, do not ask for it again. Continue to availability lookup.",
+                            "# Date Handling",
+                            "Accept a date only when it is clearly understood.",
+                            "Convert a clearly understood date to YYYY-MM-DD internally.",
+                            "Do not guess a date from unclear, garbled, unrelated, or foreign-language transcription.",
+                            "When the date is unclear, ask: 'کون سی تاریخ چاہیے؟'",
+                            "# Availability Lookup",
+                            "As soon as both doctor_name and requested_date are verified, call get_doctor_availability. Offer only the returned available_slots and ask the caller to select one slot.",
+                            "# Speaking Time Slots",
+                            "Treat the latest available_slots response as a closed authoritative list. Do not use any time from instructions, examples, memory, or an earlier lookup.",
+                            "Preserve the number and order of returned slots. Speak every returned slot exactly once; never add, remove, substitute, merge, or reorder a value.",
+                            "For each returned value, parse its hour, minutes, and AM or PM separately. Converting it to spoken Urdu must not change the numeric hour or minutes.",
+                            "Use the AM or PM marker only to choose a natural Urdu period word. Never let the period conversion change the clock value.",
+                            "When minutes are zero, say the same hour followed by 'بجے'. When minutes are non-zero, say the same hour followed by 'بج کر', the same minutes, and 'منٹ'.",
+                            "Before speaking, compare the spoken list against available_slots one item at a time. If any spoken hour or minute would differ, correct the Urdu wording before responding; never substitute another time.",
+                            "Speak hours and minutes as Urdu words only. Never read AM, PM, a colon, or a raw numeric time aloud.",
+                            "After the complete list, ask one short question for the caller to choose a time.",
+                            "# Slot Selection and Completion",
+                            "Accept only a slot returned by the latest availability lookup.",
+                            "Match the caller's spoken selection to one exact original value from that closed list and preserve that original value internally.",
+                            "If the caller selects a time that is absent from the latest available_slots, do not call the completion tool. Briefly repeat the valid returned slots and ask the caller to choose again.",
+                            "When doctor_name, requested_date, and slot are all verified, immediately call complete_doctor_and_slot_selection.",
+                            "Never call the completion tool with missing or unverified values.",
+                            "Do not call the completion tool more than once.",
+                            "# Workflow Switching",
+                            "When the caller asks a separate hospital-information question, immediately call switch_workflow with workflow_id: general_information.",
+                            "Do not answer the information question from memory and do not call doctor-selection tools for it.",
+                            "# Ending or Transferring",
+                            "When the caller explicitly asks to end the call, call return_to_router with action: end_call.",
+                            "When the caller explicitly asks to transfer the call, call return_to_router with action: transfer_call.",
+                            "Do not merely promise to end or transfer the call."
+                        ],
+                        "completion_validators": [
+                            {
+                                "tool": "get_doctor_availability",
+                                "type": "equals_tool_argument",
+                                "field": "doctor_name",
+                                "argument": "doctor_name"
+                            },
+                            {
+                                "tool": "get_doctor_availability",
+                                "type": "equals_tool_argument",
+                                "field": "requested_date",
+                                "argument": "date"
+                            },
+                            {
+                                "tool": "get_doctor_availability",
+                                "type": "value_in_tool_response",
+                                "field": "slot",
+                                "paths": [
+                                    "available_slots",
+                                    "data.available_slots",
+                                    "result.available_slots",
+                                    "data.result.available_slots"
+                                ]
+                            }
+                        ],
+                        "on_enter_instructions": "First process every relevant value already present in the caller's latest turn. Do not repeat a question whose answer is already known. Only when the next required value is missing, ask exactly: 'آپ کس ڈاکٹر کے ساتھ اپائنٹمنٹ چاہتے ہیں؟'",
+                        "required_tool_calls_before_complete": [
+                            "get_doctor_availability"
+                        ]
+                    }
+                },
+                "task_order": [
+                    "doctor_and_slot_selection",
+                    "personal_details",
+                    "confirm_and_create"
+                ],
+                "description": "Book an appointment.",
+                "start_phrase": "آئیے آپ کی اپائنٹمنٹ بک کرتے ہیں۔",
+                "interruptible_by": [
+                    "general_information",
+                    "slot_retry"
+                ],
+                "summarize_chat_ctx": false,
+                "resume_after_interrupt": true
+            },
+            "general_information": {
+                "task_group": {
+                    "answer_question": {
+                        "kind": "answer",
+                        "tools": [
+                            "search_hospital_information"
+                        ],
+                        "answer_tool": "search_hospital_information",
+                        "description": "Search the real hospital FAQ endpoint and answer only from its result.",
+                        "answer_paths": [
+                            "answer",
+                            "data.answer",
+                            "match.answer",
+                            "data.match.answer",
+                            "result.answer",
+                            "result"
+                        ],
+                        "answer_state": "information.answer",
+                        "entry_prompt": "آپ ہسپتال کے بارے میں کیا جاننا چاہتے ہیں؟",
+                        "instructions": [
+                            "Always use feminine Urdu self-reference and keep the verified hospital-information answer concise.",
+                            "ENDING OVERRIDE: If the caller's latest turn declines further help, says goodbye, says nothing else is needed, or is a closing thank-you in response to 'کیا میں کسی اور چیز میں مدد کر سکتی ہوں؟', do not search for information and do not ask another question. Immediately call return_to_router with action=end_call. Examples: نہیں, نہیں شکریہ, نہیں نہیں بہت شکریہ, بس شکریہ, بس اتنا ہی, اور کچھ نہیں, no, no thanks, that's all, nothing else.",
+                            "If the caller says they want to book an appointment or corrects their request to appointment booking, immediately call switch_workflow with create_appointment. Do not call search_hospital_information for that request.",
+                            "Translate the caller's complete hospital-information question into concise natural English, preserving decisive details such as department, service, insurance or panel name, and charge type.",
+                            "Call search_hospital_information exactly once and pass only that English translation in the question argument.",
+                            "Speak the verified answer in the caller's current language; do not switch the spoken conversation to English unless the caller does.",
+                            "Answer only from the returned verified answer. If no answer can be extracted, say the configured fallback answer.",
+                            "After the verified answer, ask exactly once: 'کیا میں کسی اور چیز میں مدد کر سکتی ہوں؟'. This question belongs only to the completed information answer; never repeat it in response to a negative or closing caller reply.",
+                            "MANDATORY COMPLETION: In the SAME response in which you speak the verified answer and ask 'کیا میں کسی اور چیز میں مدد کر سکتی ہوں؟', call finish_answer silently after the speech. Do not wait for the caller's next turn before calling finish_answer. Do not end the response without the finish_answer tool call.",
+                            "Example: caller asks 'کیا کارڈیالوجی موجود ہے؟'; send the English query 'Is cardiology available?' to the tool. After the tool result, speak only the verified Urdu answer followed by 'کیا میں کسی اور چیز میں مدد کر سکتی ہوں؟', then call finish_answer silently in that same response."
+                        ],
+                        "question_state": "information.question",
+                        "fallback_answer": "یہ معلومات ابھی تصدیق نہیں ہو سکیں۔",
+                        "question_argument": "question",
+                        "on_enter_instructions": "Use the hospital-information question already present in the caller's latest turn. Only if there is no clear question, say exactly: 'آپ ہسپتال کے بارے میں کیا جاننا چاہتے ہیں؟'"
+                    }
+                },
+                "task_order": [
+                    "answer_question"
+                ],
+                "description": "Answer hospital information questions.",
+                "start_phrase": "میں تصدیق شدہ معلومات دیکھتی ہوں۔",
+                "interruptible_by": [
+                    "create_appointment"
+                ],
+                "summarize_chat_ctx": false,
+                "resume_after_interrupt": false
+            }
+        },
+        "task_defaults": {
+            "instructions": [
+                "You are executing one short step in a hospital voice workflow.",
+                "Begin and continue in natural Pakistani Urdu unless the caller clearly changes language.",
+                "Use feminine Urdu forms for yourself, such as کروں گی, دیکھوں گی, بتاؤں گی, and کر رہی ہوں.",
+                "Never use masculine self-reference such as کروں گا, دیکھوں گا, بتاؤں گا, or کر رہا ہوں.",
+                "Use gender-neutral wording when referring to the caller until the caller's gender is explicitly known. Never infer gender from a name or voice; prefer neutral Urdu phrasing such as 'آپ کے لیے کون سا وقت مناسب ہے؟' and 'کون سی تاریخ چاہیے؟'.",
+                "Be concise: speak one short sentence and at most one necessary question.",
+                "Never narrate future steps, list what you will do next, or explain the workflow.",
+                "After a tool result, speak only the result and one necessary question.",
+                "Do not add thanks, acknowledgements, recaps, or offers unless the task explicitly requires one.",
+                "Ask one question at a time, but process every useful detail volunteered in one turn.",
+                "Never mention task IDs, workflow IDs, JSON, state fields, internal routing, or tool names.",
+                "Never invent doctor information, availability, appointment results, or hospital facts.",
+                "Do not acknowledge every answer and do not say that a value was stored.",
+                "ENDING HAS PRIORITY OVER THE CURRENT TASK. If the caller explicitly asks to end the call, says goodbye, says they need nothing else, declines further help, or gives a closing response to an offer of more help, immediately call return_to_router with action=end_call. Examples include: نہیں, نہیں شکریہ, نہیں نہیں بہت شکریہ, بس شکریہ, بس اتنا ہی, اور کچھ نہیں, no, no thanks, that's all, nothing else. If the caller explicitly asks to transfer the call, immediately call return_to_router with action=transfer_call. Never merely promise to end or transfer, and never ask another follow-up after an end signal."
+            ]
+        },
+        "schema_version": 1,
+        "tool_presentation": {
+            "create_appointment": {
+                "progress_phrase": "میں آپ کی اپائنٹمنٹ بک کر رہی ہوں، براہِ کرم ایک لمحہ انتظار کیجیے۔"
+            },
+            "get_doctor_by_name": {
+                "progress_phrase": "میں ڈاکٹر کی معلومات چیک کر رہی ہوں، ایک لمحہ انتظار کیجیے۔"
+            },
+            "get_doctor_availability": {
+                "progress_phrase": "میں ڈاکٹر کے دستیاب اوقات دیکھ رہی ہوں، ایک لمحہ انتظار کیجیے۔"
+            },
+            "get_doctors_specialization": {
+                "progress_phrase": "میں دستیاب شعبے دیکھ رہی ہوں، ایک لمحہ انتظار کیجیے۔"
+            },
+            "search_hospital_information": {
+                "progress_phrase": "میں یہ معلومات چیک کر رہی ہوں، ایک لمحہ انتظار کیجیے۔"
+            },
+            "get_doctor_by_specialization": {
+                "progress_phrase": "میں اس شعبے کے ڈاکٹرز دیکھ رہی ہوں، ایک لمحہ انتظار کیجیے۔"
+            }
+        }
+    },
+    "company": 1,
+    "associated_documents": []
+}

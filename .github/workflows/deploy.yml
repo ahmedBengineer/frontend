@@ -1,0 +1,83 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy Dev Server
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: 107.23.136.20
+          username: ubuntu
+          key: ${{ secrets.HOSTINGERSSHKEY }}
+          script: |
+            cd /home/ubuntu/frontend
+            git checkout dev
+            git pull origin dev
+            docker builder prune -af || true
+            docker image prune -af || true
+            docker compose up --build -d --remove-orphans
+            docker image prune -af --filter "until=24h" || true
+            docker builder prune -af --filter "until=24h" || true
+            sleep 10
+            curl -f http://localhost:3000 >/dev/null
+
+      - name: Slack Success (Dev)
+        if: success()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H "Content-type: application/json" \
+          -d "{\"text\":\"✅ DEV Deployment Successful 🚀 | Repo: ${{ github.repository }} | Commit: ${{ github.event.head_commit.message }}\"}"
+
+      - name: Slack Failure (Dev)
+        if: failure()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H "Content-type: application/json" \
+          -d "{\"text\":\"❌ DEV Deployment Failed 🚨 | Repo: ${{ github.repository }}\"}"
+
+
+  deploy-main:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy Production Server
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: 98.93.251.56
+          username: ubuntu
+          key: ${{ secrets.PRODKEY }}
+          script: |
+            cd /home/ubuntu/frontend
+            git checkout main
+            git pull origin main
+            docker builder prune -af || true
+            docker image prune -af || true
+            docker compose up --build -d --remove-orphans
+            docker image prune -af --filter "until=24h" || true
+            docker builder prune -af --filter "until=24h" || true
+            sleep 10
+            curl -f http://localhost:3000 >/dev/null
+
+      - name: Slack Success (Prod)
+        if: success()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H "Content-type: application/json" \
+          -d "{\"text\":\"🚀 PROD Deployment Successful ✅ | Repo: ${{ github.repository }} | Commit: ${{ github.event.head_commit.message }}\"}"
+
+      - name: Slack Failure (Prod)
+        if: failure()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H "Content-type: application/json" \
+          -d "{\"text\":\"🔥 PROD Deployment FAILED ❌ | Repo: ${{ github.repository }}\"}"

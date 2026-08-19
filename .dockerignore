@@ -1,0 +1,14 @@
+.git
+.github
+.next
+node_modules
+coverage
+storybook-static
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+*.log
+.env*.local
+.vscode
+.idea

@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false
+  },
+  "include": [
+    "next-env.d.ts",
+    "app/api/workflow-test/**/*.ts",
+    "app/api/workflow-studio/**/*.ts",
+    "app/dashboard/workflow-studio/**/*.tsx",
+    "components/workflow-editor/**/*.ts",
+    "components/workflow-editor/**/*.tsx",
+    "components/workflow-test/**/*.tsx",
+    "hooks/useWorkflowTelemetry.ts",
+    "lib/workflow-test/**/*.ts",
+    "lib/workflow-studio/**/*.ts",
+    "__tests__/workflow-studio/**/*.ts",
+    "__tests__/workflow-studio/**/*.tsx",
+    "vitest.workflow.config.ts",
+    "vitest.workflow-browser.config.ts"
+  ]
+}
