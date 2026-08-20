@@ -632,8 +632,10 @@ export default function IntegrationsPage() {
                 headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
               })
               if (zapierRes.ok) {
-                const zapierData = await zapierRes.json()
-                if (zapierData.zapier_secret) zapierStatus = "Connected"
+                try {
+                  const zapierData = await zapierRes.json()
+                  if (zapierData.zapier_secret) zapierStatus = "Connected"
+                } catch { /* non-JSON */ }
               }
             }
           }
@@ -947,11 +949,13 @@ export default function IntegrationsPage() {
         const cid = typeof meData.company === "object" ? meData.company?.id : meData.company
         if (cid) {
           setZapierCompanyId(cid)
-          const companyRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company/companies/${cid}/`, { headers: authHeaders })
-          if (companyRes.ok) {
-            const companyData = await companyRes.json()
-            if (companyData.zapier_secret) setZapierSecret(companyData.zapier_secret)
-          }
+          try {
+            const companyRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company/companies/${cid}/`, { headers: authHeaders })
+            if (companyRes.ok) {
+              const companyData = await companyRes.json()
+              if (companyData.zapier_secret) setZapierSecret(companyData.zapier_secret)
+            }
+          } catch { /* endpoint may not exist yet */ }
         }
       }
     } catch { /* non-critical */ }
@@ -965,8 +969,14 @@ export default function IntegrationsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || "Failed to generate secret.")
+      if (res.status === 404) {
+        toast({ description: "This feature is not available yet. Please contact support.", variant: "destructive" })
+        return
+      }
+      const text = await res.text()
+      let data: any = {}
+      try { data = JSON.parse(text) } catch { /* non-JSON response */ }
+      if (!res.ok) throw new Error(data.detail || data.error || "Failed to generate secret.")
       setZapierSecret(data.zapier_secret)
       setIntegrations((prev) =>
         prev.map((i) => i.key === "zapier" ? { ...i, status: "Connected", statusColor: "text-green-600" } : i)
