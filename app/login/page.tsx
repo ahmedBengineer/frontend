@@ -272,7 +272,8 @@ export default function LoginPage() {
       }
 
       if (!response.ok) {
-        throw new Error(data?.message || "Login failed")
+        const errorMsg = data?.error || data?.message || data?.detail || "Invalid email or password. Please try again."
+        throw new Error(errorMsg)
       }
       console.log("Login response:", data)
       // Only block when status is explicitly set to something other than "active" (e.g. inactive/suspended). null/undefined means allowed.
@@ -308,7 +309,11 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error("Login error:", err)
-      alert(err.message)
+      toast({
+        title: "Login failed",
+        description: err.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       if (!require2FA) {
     // only stop loading if login failed
