@@ -310,7 +310,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Link2, CheckCircle2, XCircle, Loader2, MapPin, ChevronRight } from "lucide-react"
+import { Link2, CheckCircle2, XCircle, Loader2, MapPin, ChevronRight, Eye, EyeOff, Copy, Check, AlertTriangle, Zap } from "lucide-react"
 
 const integrationKeyMap: Record<string, string> = {
   "leadconnector (ghl) v2 - standard": "ghl-standard",
@@ -400,6 +400,10 @@ function IntegrationLogo({ integration }: { integration: any }) {
         </svg>
       ),
     },
+    zapier: {
+      bg: "bg-[#FF4A00]/10", hover: "group-hover:bg-[#FF4A00]/20",
+      icon: <Zap className="w-5 h-5 text-[#FF4A00]" />,
+    },
   }
 
   const cfg = logos[integration.key]
@@ -458,6 +462,13 @@ export default function IntegrationsPage() {
       statusColor: "text-orange-600",
       isShopify: true,
     },
+    {
+      key: "zapier",
+      name: "Zapier",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+      isZapier: true,
+    },
   ])
 
 
@@ -483,6 +494,15 @@ export default function IntegrationsPage() {
   const [shopifyShop, setShopifyShop] = useState("")
   const [shopifyConnecting, setShopifyConnecting] = useState(false)
   const [shopifyDisconnecting, setShopifyDisconnecting] = useState(false)
+
+  const [isZapierModalOpen, setIsZapierModalOpen] = useState(false)
+  const [zapierSecret, setZapierSecret] = useState("")
+  const [zapierSecretVisible, setZapierSecretVisible] = useState(false)
+  const [zapierGenerating, setZapierGenerating] = useState(false)
+  const [zapierCompanyId, setZapierCompanyId] = useState<number | null>(null)
+  const [zapierAgents, setZapierAgents] = useState<any[]>([])
+  const [zapierAgentsLoading, setZapierAgentsLoading] = useState(false)
+  const [zapierCopiedField, setZapierCopiedField] = useState<string | null>(null)
 
 
 
@@ -598,6 +618,27 @@ export default function IntegrationsPage() {
           }
         } catch { /* non-critical */ }
 
+        // Fetch Zapier status
+        let zapierStatus = "Not Connected"
+        try {
+          const meRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/me/`, {
+            headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
+          })
+          if (meRes.ok) {
+            const meData = await meRes.json()
+            const cid = typeof meData.company === "object" ? meData.company?.id : meData.company
+            if (cid) {
+              const zapierRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company/companies/${cid}/`, {
+                headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
+              })
+              if (zapierRes.ok) {
+                const zapierData = await zapierRes.json()
+                if (zapierData.zapier_secret) zapierStatus = "Connected"
+              }
+            }
+          }
+        } catch { /* non-critical */ }
+
         setIntegrations((prev) =>
   prev.map((integration) => {
     if (integration.key === "kitchenhub") {
@@ -629,6 +670,13 @@ export default function IntegrationsPage() {
         ...integration,
         status: shopifyStatus,
         statusColor: shopifyStatus === "Connected" ? "text-green-600" : "text-orange-600",
+      }
+    }
+    if (integration.key === "zapier") {
+      return {
+        ...integration,
+        status: zapierStatus,
+        statusColor: zapierStatus === "Connected" ? "text-green-600" : "text-orange-600",
       }
     }
     return {
@@ -718,6 +766,11 @@ export default function IntegrationsPage() {
     if (integration.key === "shopify") {
       setShopifyShop("")
       setIsShopifyModalOpen(true)
+      return
+    }
+
+    if (integration.key === "zapier") {
+      openZapierModal()
       return
     }
 
@@ -865,6 +918,72 @@ export default function IntegrationsPage() {
     } finally {
       setShopifyDisconnecting(false)
     }
+  }
+
+  const openZapierModal = async () => {
+    setIsZapierModalOpen(true)
+    setZapierSecret("")
+    setZapierSecretVisible(false)
+    setZapierCompanyId(null)
+
+    const token = Cookies.get("Token") || ""
+    const authHeaders = { "Content-Type": "application/json", Authorization: `Token ${token}` }
+
+    try {
+      setZapierAgentsLoading(true)
+      const agentsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/`, { headers: authHeaders })
+      if (agentsRes.ok) {
+        const agentsData = await agentsRes.json()
+        setZapierAgents(Array.isArray(agentsData) ? agentsData : [])
+      }
+    } catch { /* non-critical */ } finally {
+      setZapierAgentsLoading(false)
+    }
+
+    try {
+      const meRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/me/`, { headers: authHeaders })
+      if (meRes.ok) {
+        const meData = await meRes.json()
+        const cid = typeof meData.company === "object" ? meData.company?.id : meData.company
+        if (cid) {
+          setZapierCompanyId(cid)
+          const companyRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company/companies/${cid}/`, { headers: authHeaders })
+          if (companyRes.ok) {
+            const companyData = await companyRes.json()
+            if (companyData.zapier_secret) setZapierSecret(companyData.zapier_secret)
+          }
+        }
+      }
+    } catch { /* non-critical */ }
+  }
+
+  const handleZapierGenerateSecret = async () => {
+    setZapierGenerating(true)
+    try {
+      const token = Cookies.get("Token") || ""
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company/companies/generate_zapier_secret/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || "Failed to generate secret.")
+      setZapierSecret(data.zapier_secret)
+      setIntegrations((prev) =>
+        prev.map((i) => i.key === "zapier" ? { ...i, status: "Connected", statusColor: "text-green-600" } : i)
+      )
+      toast({ description: "Zapier secret generated!" })
+    } catch (err: any) {
+      toast({ description: err.message || "Error generating secret.", variant: "destructive" })
+    } finally {
+      setZapierGenerating(false)
+    }
+  }
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text)
+    setZapierCopiedField(field)
+    toast({ description: "Copied to clipboard!" })
+    setTimeout(() => setZapierCopiedField(null), 2000)
   }
 
   const openKitchenHubModal = async () => {
@@ -1170,6 +1289,9 @@ const handleFacebookConnect = async (agentId: number) => {
                           {integration.isShopify && (
                             <span className="text-xs text-slate-400 font-light">E-commerce Store</span>
                           )}
+                          {integration.isZapier && (
+                            <span className="text-xs text-slate-400 font-light">Trigger AI voice calls from any app</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1246,6 +1368,24 @@ const handleFacebookConnect = async (agentId: number) => {
                             onClick={() => { setShopifyShop(""); setIsShopifyModalOpen(true) }}
                           >
                             Connect
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )
+                      ) : integration.isZapier ? (
+                        integration.status === "Connected" ? (
+                          <button
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF4A00]/10 hover:bg-[#FF4A00]/20 text-[#FF4A00] rounded-xl transition-all duration-200 text-sm font-light"
+                            onClick={() => openZapierModal()}
+                          >
+                            Reconnect
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF4A00] hover:bg-[#e64400] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#FF4A00]/20"
+                            onClick={() => openZapierModal()}
+                          >
+                            Connect Zapier
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         )
@@ -1538,6 +1678,173 @@ const handleFacebookConnect = async (agentId: number) => {
               disabled={shopifyConnecting}
             >
               {shopifyConnecting ? "Redirecting..." : "Connect Store"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Zapier Modal */}
+      <Dialog open={isZapierModalOpen} onOpenChange={setIsZapierModalOpen}>
+        <DialogContent className="rounded-2xl max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-light text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#FF4A00]/10 flex items-center justify-center">
+                <Zap className="w-4 h-4 text-[#FF4A00]" />
+              </div>
+              Connect Zapier
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-8 mt-4">
+            {/* Section A: Zapier Secret */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-slate-900">Your Zapier Secret</h3>
+              <p className="text-xs text-slate-500 font-light">This secret authenticates your Zapier webhooks. Keep it confidential.</p>
+              {zapierSecret ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-mono text-sm text-slate-700 overflow-hidden">
+                      {zapierSecretVisible ? zapierSecret : "\u2022".repeat(32)}
+                    </div>
+                    <button
+                      onClick={() => setZapierSecretVisible(!zapierSecretVisible)}
+                      className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center flex-shrink-0 transition-all"
+                      title={zapierSecretVisible ? "Hide" : "Show"}
+                    >
+                      {zapierSecretVisible ? <EyeOff className="w-4 h-4 text-slate-500" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(zapierSecret, "secret")}
+                      className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center flex-shrink-0 transition-all"
+                      title="Copy"
+                    >
+                      {zapierCopiedField === "secret" ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-500" />}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      onClick={handleZapierGenerateSecret}
+                      disabled={zapierGenerating}
+                      className="text-xs text-[#FF4A00] hover:text-[#e64400] font-light underline underline-offset-2 disabled:opacity-60"
+                    >
+                      {zapierGenerating ? "Generating..." : "Rotate secret"}
+                    </button>
+                  </div>
+                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700 font-light">This invalidates existing Zaps using the old secret.</p>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleZapierGenerateSecret}
+                  disabled={zapierGenerating}
+                  className="px-4 py-2 bg-[#FF4A00] hover:bg-[#e64400] text-white rounded-xl transition-all duration-200 text-sm font-light disabled:opacity-60"
+                >
+                  {zapierGenerating ? "Generating..." : "Generate Secret"}
+                </button>
+              )}
+            </div>
+
+            <div className="border-t border-slate-100" />
+
+            {/* Section B: Your Agents */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-slate-900">Your Agents</h3>
+              <p className="text-xs text-slate-500 font-light">Copy an Agent ID below and paste it into your Zap as <code className="bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">agent_id</code>.</p>
+              {zapierAgentsLoading ? (
+                <div className="flex items-center gap-2 py-4 text-slate-500 text-sm font-light">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading agents...
+                </div>
+              ) : zapierAgents.length === 0 ? (
+                <p className="text-sm text-slate-400 italic font-light py-4">No agents found. Create an agent first.</p>
+              ) : (
+                <div className="space-y-2">
+                  {zapierAgents.map((agent) => (
+                    <div key={agent.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 hover:bg-slate-100/50 transition-all">
+                      <div className="min-w-0">
+                        <p className="text-sm font-light text-slate-900 truncate">{agent.name}</p>
+                        <p className="text-xs text-slate-400 font-mono">ID: {agent.id}</p>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(String(agent.id), `agent-${agent.id}`)}
+                        className="w-8 h-8 rounded-lg bg-white hover:bg-slate-200 border border-slate-200 flex items-center justify-center flex-shrink-0 ml-3 transition-all"
+                        title="Copy Agent ID"
+                      >
+                        {zapierCopiedField === `agent-${agent.id}` ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-slate-100" />
+
+            {/* Section C: Setup Steps */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-slate-900">Zapier Setup Steps</h3>
+              <ol className="space-y-4 text-sm text-slate-600 font-light">
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white text-xs flex items-center justify-center font-medium">1</span>
+                  <span className="pt-0.5">In Zapier, create a new Zap. Set the <strong className="font-medium text-slate-800">Trigger</strong> to any app (e.g., New Lead in Google Sheets / Forms).</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white text-xs flex items-center justify-center font-medium">2</span>
+                  <span className="pt-0.5">Set the <strong className="font-medium text-slate-800">Action</strong> to <strong className="font-medium text-slate-800">Webhooks by Zapier &rarr; POST</strong>.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white text-xs flex items-center justify-center font-medium">3</span>
+                  <div className="space-y-2 pt-0.5">
+                    <span className="block">Set the URL to:</span>
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
+                      <code className="text-xs text-slate-700 font-mono break-all flex-1">https://apii.pentagonai.co/api/integrations/zapier/webhook/</code>
+                      <button
+                        onClick={() => copyToClipboard("https://apii.pentagonai.co/api/integrations/zapier/webhook/", "url")}
+                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-200 border border-slate-200 flex items-center justify-center flex-shrink-0 transition-all"
+                      >
+                        {zapierCopiedField === "url" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                      </button>
+                    </div>
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white text-xs flex items-center justify-center font-medium">4</span>
+                  <div className="space-y-2 pt-0.5">
+                    <span className="block">Add a header:</span>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
+                      <code className="text-xs text-slate-700 font-mono">
+                        X-Zapier-Secret: <span className="text-[#FF4A00]">{zapierSecret ? (zapierSecretVisible ? zapierSecret : "••••••••") : "<your secret from above>"}</span>
+                      </code>
+                    </div>
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-900 text-white text-xs flex items-center justify-center font-medium">5</span>
+                  <div className="space-y-2 pt-0.5">
+                    <span className="block">Set the JSON Body:</span>
+                    <div className="bg-slate-900 rounded-xl px-4 py-3 overflow-x-auto">
+                      <pre className="text-xs text-slate-300 font-mono whitespace-pre">{`{
+  "company_id": ${zapierCompanyId || "<your numeric company id>"},
+  "agent_id": "<agent id from above>",
+  "lead_phone": "<lead phone>",
+  "lead_name": "<lead name, optional>"
+}`}</pre>
+                    </div>
+                    <p className="text-xs text-slate-400 font-light mt-1">Optional: add <code className="bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">{`"call_time"`}</code> (ISO 8601) to schedule the call instead of calling immediately.</p>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <button
+              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-all duration-200 text-sm font-light"
+              onClick={() => setIsZapierModalOpen(false)}
+            >
+              Done
             </button>
           </DialogFooter>
         </DialogContent>
