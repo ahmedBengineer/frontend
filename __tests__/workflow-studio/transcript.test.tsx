@@ -26,7 +26,11 @@ vi.mock("@livekit/components-react", () => ({
   }),
 }));
 
-import { Transcript } from "@/components/workflow-test/Transcript";
+import {
+  buildConversationExport,
+  Transcript,
+} from "@/components/workflow-test/Transcript";
+import { createExecutionState } from "@/lib/workflow-test/telemetry";
 
 describe("conversation transcript", () => {
   beforeEach(() => {
@@ -65,5 +69,45 @@ describe("conversation transcript", () => {
     render(<Transcript agentAudioTrack={livekitMock.agentTrack as never} />);
     expect(screen.getByText("How may I help?")).toBeVisible();
     expect(screen.getByText("Typed request")).toBeVisible();
+  });
+
+  it("builds a structured conversation export with execution context", () => {
+    const execution = {
+      ...createExecutionState(),
+      sessionId: "session-42",
+      currentWorkflowId: "general_information",
+      currentTaskId: "answer_verified_question",
+    };
+    const payload = buildConversationExport(
+      [
+        {
+          id: "Agent:one",
+          text: "Water services are available online.",
+          speaker: "Agent",
+          isSelf: false,
+          timestamp: Date.parse("2026-08-21T09:00:00.000Z"),
+          final: true,
+          source: "transcription",
+        },
+      ],
+      execution,
+    );
+
+    expect(payload).toMatchObject({
+      schema_version: 1,
+      type: "smartconvo.conversation",
+      session_id: "session-42",
+      workflow: "general_information",
+      task: "answer_verified_question",
+      messages: [
+        {
+          speaker: "Agent",
+          text: "Water services are available online.",
+          source: "transcription",
+          timestamp: "2026-08-21T09:00:00.000Z",
+          final: true,
+        },
+      ],
+    });
   });
 });
