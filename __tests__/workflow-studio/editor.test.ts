@@ -13,7 +13,12 @@ import {
   findWorkflowReferences,
   validateWorkflowDefinition,
 } from "@/components/workflow-editor/utils/validation";
-import { buildMainAgentGraph } from "@/components/workflow-editor/utils/graphBuilder";
+import { buildMainAgentGraph, buildWorkflowGraph } from "@/components/workflow-editor/utils/graphBuilder";
+import {
+  connectSupervisorTasks,
+  ensureSupervisorGraph,
+  setSupervisorTaskPosition,
+} from "@/components/workflow-editor/utils/supervisorGraph";
 import {
   matchesAgentRuntime,
   normalizeAgentRuntime,
@@ -131,6 +136,73 @@ describe("workflow validation and referenced deletes", () => {
     ]);
     expect(findStateReferences(source, "patient_name")).toContain(
       "booking/details.collect",
+    );
+  });
+});
+
+describe("supervisor task graphs", () => {
+  it("upgrades a legacy task order and persists task positions", () => {
+    const withCreate = addTask(
+      base,
+      "booking",
+      "create",
+      createTask("action", { toolName: "create_appointment" }),
+    );
+    const graph = ensureSupervisorGraph(withCreate, "booking");
+    const positioned = setSupervisorTaskPosition(graph, "booking", "create", { x: 420, y: 210 });
+    expect(positioned.schema_version).toBe(2);
+    expect(positioned.architecture).toBe("supervisor");
+    expect(positioned.workflows?.booking.entry_task_id).toBe("details");
+    expect(positioned.workflows?.booking.task_edges).toEqual([
+      expect.objectContaining({ source: "details", target: "create" }),
+    ]);
+    expect(buildWorkflowGraph(positioned, "booking").nodes.find((node) => node.id.endsWith(":create"))?.position)
+      .toEqual({ x: 420, y: 210 });
+  });
+
+  it("creates a deterministic conditioned branch with one default", () => {
+    let graph = structuredClone(base);
+    graph = addTask(graph, "booking", "found", createTask("action", { toolName: "lookup" }));
+    graph = addTask(graph, "booking", "missing", createTask("action", { toolName: "create_appointment" }));
+    graph = connectSupervisorTasks(ensureSupervisorGraph({ ...graph, workflows: {
+      ...graph.workflows,
+      booking: { ...graph.workflows!.booking, task_edges: [] },
+    } }, "booking"), "booking", "details", "found", "patient_name");
+    graph = connectSupervisorTasks(graph, "booking", "details", "missing", "patient_name");
+    const outgoing = graph.workflows!.booking.task_edges!.filter((edge) => edge.source === "details");
+    expect(outgoing.filter((edge) => edge.default)).toHaveLength(1);
+    expect(outgoing.filter((edge) => edge.condition)).toEqual([
+      expect.objectContaining({ target: "missing", condition: { path: "patient_name", operator: "exists" } }),
+    ]);
+  });
+
+  it("validates graph branches, reachability, cycles, and condition paths", () => {
+    const invalid = structuredClone(base);
+    invalid.schema_version = 2;
+    invalid.architecture = "supervisor";
+    invalid.workflows!.booking.entry_task_id = "details";
+    invalid.workflows!.booking.task_group.second = { kind: "collect", collect: { name: { state: "patient_name" } } };
+    invalid.workflows!.booking.task_order.push("second");
+    invalid.workflows!.booking.task_edges = [
+      { id: "bad", source: "details", target: "second", condition: { path: "missing", operator: "exists" } },
+      { id: "back", source: "second", target: "details" },
+    ];
+    const messages = validateWorkflowDefinition(invalid, []).errors.map((item) => item.message).join(" ");
+    expect(messages).toMatch(/unknown state/i);
+    expect(messages).toMatch(/single transition/i);
+    expect(messages).toMatch(/cycle/i);
+  });
+
+  it("tracks state references used by branch conditions", () => {
+    const graph = ensureSupervisorGraph(base, "booking");
+    graph.workflows!.booking.task_edges = [{
+      id: "loop_for_reference_only",
+      source: "details",
+      target: "details",
+      condition: { path: "patient_name", operator: "exists" },
+    }];
+    expect(findStateReferences(graph, "patient_name")).toContain(
+      "booking.task_edges.loop_for_reference_only.condition",
     );
   });
 });

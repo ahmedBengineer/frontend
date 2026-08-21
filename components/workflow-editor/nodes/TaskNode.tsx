@@ -70,6 +70,7 @@ export interface TaskNodeData extends Record<string, unknown> {
   toolCount: number;
   variableCount: number;
   unsequenced?: boolean;
+  isEntry?: boolean;
   onSelect?: () => void;
   onOpenInstructions?: () => void;
   executionStatus?: ExecutionStatus;
@@ -142,6 +143,11 @@ export function TaskNode({ data, selected }: NodeProps<TaskNodeType>) {
         <span className="absolute -right-2 -top-3 z-20 inline-flex items-center gap-1 rounded-full bg-cyan-500 px-2 py-1 text-[9px] font-bold tracking-[0.12em] text-slate-950 shadow-lg dark:bg-cyan-300">
           <span className="h-1.5 w-1.5 rounded-full bg-slate-950 animate-pulse" />
           LIVE TASK
+        </span>
+      )}
+      {data.isEntry && data.executionStatus !== "active" && (
+        <span className="absolute -left-2 -top-3 z-20 rounded-full bg-emerald-500 px-2 py-1 text-[9px] font-bold tracking-wide text-white shadow">
+          ENTRY
         </span>
       )}
       {/* Accent strip */}

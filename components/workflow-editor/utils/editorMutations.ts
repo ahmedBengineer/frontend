@@ -96,9 +96,14 @@ export function removeTask(
     throw new Error("A workflow must keep at least one task");
   const next = structuredClone(json);
   delete next.workflows![workflowId].task_group[taskId];
-  next.workflows![workflowId].task_order = next.workflows![
-    workflowId
-  ].task_order.filter((id) => id !== taskId);
+  const target = next.workflows![workflowId];
+  target.task_order = target.task_order.filter((id) => id !== taskId);
+  if (target.task_edges) {
+    target.task_edges = target.task_edges.filter(
+      (edge) => edge.source !== taskId && edge.target !== taskId,
+    );
+  }
+  if (target.entry_task_id === taskId) target.entry_task_id = target.task_order[0];
   return next;
 }
 

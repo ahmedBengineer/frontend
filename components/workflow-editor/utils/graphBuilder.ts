@@ -101,7 +101,9 @@ export function buildWorkflowGraph(
 
   const { ordered, unsequenced } = getOrderedTasks(workflow);
 
-  // Sequenced tasks — vertical chain, all centered at TASK_CENTER_X
+  const graphEnabled = Boolean(workflow.entry_task_id && workflow.task_edges);
+
+  // Sequenced tasks — saved graph positions take precedence over the fallback chain.
   ordered.forEach(({ key, task }, index) => {
     const nodeId = `workflow:${workflowId}:task:${key}`;
     const toolCount = getTaskToolReferences(task).length;
@@ -110,17 +112,21 @@ export function buildWorkflowGraph(
     nodes.push({
       id: nodeId,
       type: "taskNode",
-      position: { x: TASK_CENTER_X, y: index * TASK_Y_GAP + TASK_START_Y },
+      position: task.ui?.position ?? {
+        x: TASK_CENTER_X,
+        y: index * TASK_Y_GAP + TASK_START_Y,
+      },
       data: {
         taskId: key,
         workflowId,
         task,
         toolCount,
         variableCount: varCount,
+        isEntry: workflow.entry_task_id === key,
       },
     });
 
-    if (index > 0) {
+    if (!graphEnabled && index > 0) {
       const prevId = `workflow:${workflowId}:task:${ordered[index - 1].key}`;
       edges.push({
         id: `edge:${workflowId}:${ordered[index - 1].key}:${key}`,
@@ -138,6 +144,30 @@ export function buildWorkflowGraph(
     }
   });
 
+  if (graphEnabled) {
+    for (const edge of workflow.task_edges ?? []) {
+      edges.push({
+        id: edge.id,
+        source: `workflow:${workflowId}:task:${edge.source}`,
+        target: `workflow:${workflowId}:task:${edge.target}`,
+        type: "transitionEdge",
+        label: edge.label,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 12,
+          height: 12,
+          color: "#64748b",
+        },
+        data: {
+          label: edge.label,
+          fullLabel: edge.label,
+          badgeType: edge.default ? "DEFAULT" : edge.condition ? "BRANCH" : "PROMPT",
+          condition: edge.condition,
+        },
+      });
+    }
+  }
+
   // Unsequenced tasks — offset to the right with warning flag
   const unsequencedX = TASK_CENTER_X + 300 + 60;
   unsequenced.forEach(({ key, task }, index) => {
@@ -148,7 +178,10 @@ export function buildWorkflowGraph(
     nodes.push({
       id: nodeId,
       type: "taskNode",
-      position: { x: unsequencedX, y: index * TASK_Y_GAP + TASK_START_Y },
+      position: task.ui?.position ?? {
+        x: unsequencedX,
+        y: index * TASK_Y_GAP + TASK_START_Y,
+      },
       data: {
         taskId: key,
         workflowId,

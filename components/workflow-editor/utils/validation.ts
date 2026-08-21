@@ -178,8 +178,11 @@ export function validateWorkflowDefinition(
   const workflows = jsonObject.workflows;
   const stateFields = jsonObject.state?.fields ?? {};
 
-  if (jsonObject.schema_version !== 1)
-    errors.push(issue("error", "schema_version must be 1"));
+  if (
+    jsonObject.schema_version !== 1 &&
+    !(jsonObject.schema_version === 2 && jsonObject.architecture === "supervisor")
+  )
+    errors.push(issue("error", "Supervisor schema_version must be 1 or 2"));
   if (!jsonObject.assistant || typeof jsonObject.assistant !== "object") {
     errors.push(issue("error", "assistant must be an object"));
   }
@@ -220,6 +223,64 @@ export function validateWorkflowDefinition(
       errors.push(
         issue("error", "task_order must list every task exactly once", context),
       );
+    }
+    const hasEntry = typeof workflow.entry_task_id === "string";
+    const hasEdges = Array.isArray(workflow.task_edges);
+    if (hasEntry !== hasEdges) {
+      errors.push(issue("error", "entry_task_id and task_edges must be provided together", context));
+    }
+    if (hasEntry && hasEdges) {
+      if (jsonObject.schema_version !== 2 || jsonObject.architecture !== "supervisor")
+        errors.push(issue("error", "Task graphs require schema v2 supervisor architecture", context));
+      if (!taskIds.includes(workflow.entry_task_id!))
+        errors.push(issue("error", "entry_task_id must reference a task", context));
+      const outgoing = new Map(taskIds.map((taskId) => [taskId, [] as NonNullable<typeof workflow.task_edges>]));
+      const edgeIds = new Set<string>();
+      const pairs = new Set<string>();
+      for (const edge of workflow.task_edges ?? []) {
+        if (!edge.id || edgeIds.has(edge.id))
+          errors.push(issue("error", "Task edge IDs must be unique and non-empty", context));
+        edgeIds.add(edge.id);
+        const pair = `${edge.source}\0${edge.target}`;
+        if (pairs.has(pair)) errors.push(issue("error", `Duplicate task edge “${edge.source} → ${edge.target}”`, context));
+        pairs.add(pair);
+        if (!taskIds.includes(edge.source) || !taskIds.includes(edge.target))
+          errors.push(issue("error", `Task edge “${edge.id}” references an unknown task`, context));
+        outgoing.get(edge.source)?.push(edge);
+        for (const path of edge.condition ? conditionPaths(edge.condition) : []) {
+          if (!path.trim() || !(path in stateFields))
+            errors.push(issue("error", `Task edge “${edge.id}” references unknown state “${path || "empty"}”`, context));
+        }
+      }
+      for (const [taskId, taskEdges] of outgoing) {
+        if (taskEdges.length === 1 && (taskEdges[0].condition || taskEdges[0].default))
+          errors.push(issue("error", `Single transition from “${taskId}” must be unconditional`, context));
+        if (taskEdges.length > 1) {
+          const defaults = taskEdges.filter((edge) => edge.default);
+          const conditioned = taskEdges.filter((edge) => edge.condition);
+          if (defaults.length !== 1 || conditioned.length !== taskEdges.length - 1)
+            errors.push(issue("error", `Branches from “${taskId}” need conditions and exactly one default`, context));
+        }
+      }
+      const visiting = new Set<string>();
+      const visited = new Set<string>();
+      let cycleReported = false;
+      const visit = (taskId: string) => {
+        if (visiting.has(taskId)) {
+          if (!cycleReported) errors.push(issue("error", "Task graph contains a cycle", context));
+          cycleReported = true;
+          return;
+        }
+        if (visited.has(taskId)) return;
+        visiting.add(taskId);
+        for (const edge of outgoing.get(taskId) ?? []) visit(edge.target);
+        visiting.delete(taskId);
+        visited.add(taskId);
+      };
+      if (taskIds.includes(workflow.entry_task_id!)) visit(workflow.entry_task_id!);
+      const unreachable = taskIds.filter((taskId) => !visited.has(taskId));
+      if (unreachable.length)
+        errors.push(issue("error", `Unreachable tasks: ${unreachable.join(", ")}`, context));
     }
     for (const interruptId of workflow.interruptible_by ?? []) {
       if (!workflowIds.has(interruptId)) {
@@ -274,6 +335,8 @@ export function validateWorkflowDefinition(
               ),
             );
           }
+          if (field.required !== undefined && typeof field.required !== "boolean")
+            errors.push(issue("error", `Collect argument “${alias}” required must be boolean`, taskContext));
         }
       }
       if (task.kind === "action" && !task.action_tool) {
@@ -493,6 +556,10 @@ export function findStateReferences(
         references.push(`${workflowId}/${taskId}.collect`);
       if ((task.required_state ?? []).includes(stateId))
         references.push(`${workflowId}/${taskId}.required_state`);
+    }
+    for (const edge of workflow.task_edges ?? []) {
+      if (edge.condition && conditionPaths(edge.condition).includes(stateId))
+        references.push(`${workflowId}.task_edges.${edge.id}.condition`);
     }
   }
   for (const [source, targets] of Object.entries(
