@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { AgentAudioVisualizerAura } from "@/components/agents-ui/agent-audio-visualizer-aura";
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import { Transcript } from "./Transcript";
+import { ToolCallHistory } from "./ToolCallHistory";
 import type {
   ConnectionDetails,
   WorkflowExecutionState,
@@ -46,7 +47,9 @@ export function ConnectedCallPanel({
   const connectionState = useConnectionState();
   const { name: roomName } = useRoomInfo();
   const { localParticipant } = useLocalParticipant();
-  const [tab, setTab] = useState<"conversation" | "execution">("conversation");
+  const [tab, setTab] = useState<"conversation" | "execution" | "tools">(
+    "conversation",
+  );
   const [seconds, setSeconds] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
   const enabledMic = useRef(false);
@@ -144,11 +147,11 @@ export function ConnectedCallPanel({
         </div>
       </div>
       <nav
-        className="grid grid-cols-2 border-b dark:border-slate-800"
+        className="grid grid-cols-3 border-b dark:border-slate-800"
         role="tablist"
         aria-label="Call information"
       >
-        {(["conversation", "execution"] as const).map((value) => (
+        {(["conversation", "execution", "tools"] as const).map((value) => (
           <button
             key={value}
             type="button"
@@ -161,14 +164,19 @@ export function ConnectedCallPanel({
             {value === "execution" && execution.events.length
               ? ` (${execution.events.length})`
               : ""}
+            {value === "tools" && execution.toolCalls.length
+              ? ` (${execution.toolCalls.length})`
+              : ""}
           </button>
         ))}
       </nav>
       <div className="min-h-0 flex-1 overflow-hidden">
         {tab === "conversation" ? (
           <Transcript agentAudioTrack={voiceAssistant.audioTrack} />
-        ) : (
+        ) : tab === "execution" ? (
           <ExecutionTimeline state={execution} />
+        ) : (
+          <ToolCallHistory state={execution} />
         )}
       </div>
       <div className="space-y-3 border-t p-4 dark:border-slate-800">

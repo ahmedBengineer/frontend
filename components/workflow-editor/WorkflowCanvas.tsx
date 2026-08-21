@@ -84,7 +84,10 @@ import {
   savePositions,
   structuralHash,
 } from "./utils/layoutStorage";
-import { getAutoFollowNodeId } from "./utils/testNavigation";
+import {
+  getAutoFollowNodeId,
+  getAutoFollowView,
+} from "./utils/testNavigation";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -685,6 +688,7 @@ export function WorkflowCanvas({
   const { fitView, getNode, getViewport, setCenter, screenToFlowPosition } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
   const lastFollowedNode = useRef<string | null>(null);
+  const lastAutoOpenedWorkflow = useRef<string | null>(null);
   const layoutHash = useMemo(() => structuralHash(jsonObject), [jsonObject]);
   const storageKey = useMemo(
     () =>
@@ -830,10 +834,13 @@ export function WorkflowCanvas({
   }, []);
 
   const goBack = useCallback(() => {
+    if (readOnly) {
+      lastAutoOpenedWorkflow.current = execution?.currentWorkflowId ?? null;
+    }
     setViewMode("main");
     setActiveWorkflowId(null);
     setInspectorOpen(false);
-  }, []);
+  }, [execution?.currentWorkflowId, readOnly]);
 
   // Inject per-node callbacks
   const nodesWithCallbacks: Node[] = useMemo(
@@ -899,9 +906,12 @@ export function WorkflowCanvas({
                   `${data.workflowId}/${data.taskId}`
                 ] ?? [],
               stateValues:
-                execution?.stateValues[
-                  `${data.workflowId}/${data.taskId}`
-                ] ?? {},
+                execution?.latestStateValues ?? {},
+              toolCalls: execution?.toolCalls.filter(
+                (call) =>
+                  call.workflowId === data.workflowId &&
+                  call.taskId === data.taskId,
+              ),
             },
           };
         }
@@ -975,6 +985,40 @@ export function WorkflowCanvas({
     },
     [openInspector],
   );
+
+  useEffect(() => {
+    if (!readOnly || !autoFollow) return;
+    const currentWorkflowId = execution?.currentWorkflowId ?? null;
+    const target = getAutoFollowView({
+      currentWorkflowId,
+      availableWorkflowIds: Object.keys(jsonObject.workflows ?? {}),
+      routerActive: execution?.routerStatus === "active",
+    });
+    if (!target) return;
+    if (target.viewMode === "main") {
+      lastAutoOpenedWorkflow.current = null;
+      if (viewMode !== "main" || activeWorkflowId !== null) {
+        setViewMode("main");
+        setActiveWorkflowId(null);
+        setInspectorOpen(false);
+      }
+      return;
+    }
+    if (lastAutoOpenedWorkflow.current === currentWorkflowId) return;
+    lastAutoOpenedWorkflow.current = currentWorkflowId;
+    setViewMode("detail");
+    setActiveWorkflowId(currentWorkflowId);
+    setInspectorOpen(false);
+    lastFollowedNode.current = null;
+  }, [
+    activeWorkflowId,
+    autoFollow,
+    execution?.currentWorkflowId,
+    execution?.routerStatus,
+    jsonObject.workflows,
+    readOnly,
+    viewMode,
+  ]);
 
   const createPaletteTask = useCallback(
     (kind: PaletteTaskKind, position?: { x: number; y: number }) => {
@@ -1238,6 +1282,20 @@ export function WorkflowCanvas({
           style={{ top: (readOnly ? 0 : TOOLBAR_H) + 54, left: 12, margin: 0 }}
         >
           <DetailStats workflowId={activeWorkflowId} jsonObject={jsonObject} />
+        </Panel>
+      )}
+
+      {readOnly && viewMode === "detail" && (
+        <Panel position="top-left" style={{ top: 12, left: 12, margin: 0 }}>
+          <button
+            type="button"
+            onClick={goBack}
+            className="nodrag nopan flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200"
+            style={{ pointerEvents: "all" }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            All Workflows
+          </button>
         </Panel>
       )}
 

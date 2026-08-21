@@ -87,6 +87,23 @@ export interface WorkflowTelemetryEventV1 {
   status: string | null;
   state_fields?: string[] | null;
   state_values?: Record<string, unknown> | null;
+  tool_call_id?: string | null;
+  tool_arguments?: Record<string, unknown> | null;
+  tool_response?: unknown;
+  tool_error?: string | null;
+}
+
+export interface ToolInvocationRecord {
+  id: string;
+  workflowId: string;
+  taskId: string;
+  toolName: string;
+  status: "active" | "completed" | "failed";
+  startedAt: string;
+  completedAt?: string;
+  arguments: Record<string, unknown>;
+  response?: unknown;
+  error?: string;
 }
 
 export interface WorkflowSnapshotV1 {
@@ -124,6 +141,8 @@ export interface WorkflowExecutionState {
   toolStatuses: Record<string, ExecutionStatus>;
   updatedStateFields: Record<string, string[]>;
   stateValues: Record<string, Record<string, unknown>>;
+  latestStateValues: Record<string, unknown>;
+  toolCalls: ToolInvocationRecord[];
   currentWorkflowId: string | null;
   currentTaskId: string | null;
   currentEdgeId: string | null;

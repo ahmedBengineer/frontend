@@ -106,6 +106,48 @@ describe("workflow task variable telemetry", () => {
   });
 });
 
+describe("workflow task tool telemetry", () => {
+  it("shows the latest tool parameters and response on hover", async () => {
+    render(
+      <TaskNode
+        {...({
+          id: "workflow:complaint_intake:task:resolve_contact",
+          selected: false,
+          data: {
+            taskId: "resolve_contact",
+            workflowId: "complaint_intake",
+            task: { kind: "collect", tools: ["find_contact"] },
+            toolCount: 1,
+            variableCount: 0,
+            toolStatuses: { find_contact: "completed" },
+            toolCalls: [
+              {
+                id: "call-1",
+                workflowId: "complaint_intake",
+                taskId: "resolve_contact",
+                toolName: "find_contact",
+                status: "completed",
+                startedAt: "2026-08-21T08:40:00.000Z",
+                completedAt: "2026-08-21T08:40:01.000Z",
+                arguments: { phone: "4165550100" },
+                response: { status: "not_found" },
+              },
+            ],
+          },
+        } as unknown as ComponentProps<typeof TaskNode>)}
+      />,
+    );
+
+    fireEvent.focus(screen.getByLabelText("Tool find_contact"));
+    await waitFor(() => {
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Parameters");
+      expect(tooltip).toHaveTextContent("4165550100");
+      expect(tooltip).toHaveTextContent("not_found");
+    });
+  });
+});
+
 describe("workflow card instruction previews", () => {
   it("shows task instructions and opens their editor directly", () => {
     const onOpenInstructions = vi.fn();

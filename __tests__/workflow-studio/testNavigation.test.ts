@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { getAutoFollowNodeId } from "@/components/workflow-editor/utils/testNavigation";
+import {
+  getAutoFollowNodeId,
+  getAutoFollowView,
+} from "@/components/workflow-editor/utils/testNavigation";
 
 describe("supervisor test auto-follow navigation", () => {
   it("focuses the active workflow while the runtime is between tasks", () => {
@@ -42,5 +45,28 @@ describe("supervisor test auto-follow navigation", () => {
         currentTaskId: "details",
       }),
     ).toBeNull();
+  });
+
+  it("switches the canvas when telemetry enters another workflow", () => {
+    expect(
+      getAutoFollowView({
+        currentWorkflowId: "general_information",
+        availableWorkflowIds: ["complaint_intake", "general_information"],
+        routerActive: false,
+      }),
+    ).toEqual({
+      viewMode: "detail",
+      activeWorkflowId: "general_information",
+    });
+  });
+
+  it("returns to all workflows while the router is active", () => {
+    expect(
+      getAutoFollowView({
+        currentWorkflowId: null,
+        availableWorkflowIds: ["complaint_intake"],
+        routerActive: true,
+      }),
+    ).toEqual({ viewMode: "main", activeWorkflowId: null });
   });
 });
