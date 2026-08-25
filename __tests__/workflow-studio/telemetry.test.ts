@@ -131,6 +131,27 @@ describe("workflow telemetry parsing", () => {
       status: "active",
     });
   });
+
+  it("accepts the bounded tool-call diagnostic fields", () => {
+    const parsed = parseTelemetryEvent(
+      JSON.stringify({
+        ...event(1, "tool.completed", {
+          workflow_id: "complaint_intake",
+          task_id: "resolve_contact",
+          tool_name: "find_contact",
+        }),
+        tool_call_id: "call-1",
+        tool_arguments: { phone: "4165550100" },
+        tool_response: { status: "not_found" },
+      }),
+      137,
+    );
+    expect(parsed).toMatchObject({
+      tool_call_id: "call-1",
+      tool_arguments: { phone: "4165550100" },
+      tool_response: { status: "not_found" },
+    });
+  });
 });
 
 describe("workflow execution reducer", () => {
@@ -209,6 +230,13 @@ describe("workflow execution reducer", () => {
         toolStatusKey("create_appointment", "personal_details", "lookup")
       ],
     ).toBe("completed");
+    expect(state.toolCalls).toHaveLength(1);
+    expect(state.toolCalls[0]).toMatchObject({
+      workflowId: "create_appointment",
+      taskId: "personal_details",
+      toolName: "lookup",
+      status: "completed",
+    });
 
     state = applyTelemetryEvent(
       state,
@@ -286,6 +314,45 @@ describe("workflow execution reducer", () => {
       "booking.patient_name": "Jane Patient",
       "booking.phone": "+15551234567",
     });
+    expect(state.latestStateValues).toEqual({
+      "booking.patient_name": "Jane Patient",
+      "booking.phone": "+15551234567",
+    });
+  });
+
+  it("correlates tool parameters and responses into one call record", () => {
+    let state = applyTelemetryEvent(
+      createExecutionState(),
+      event(1, "tool.started", {
+        workflow_id: "complaint_intake",
+        task_id: "resolve_contact",
+        tool_name: "find_contact",
+        tool_call_id: "call-42",
+        tool_arguments: { phone: "4165550100" },
+      }),
+    );
+    state = applyTelemetryEvent(
+      state,
+      event(2, "tool.completed", {
+        workflow_id: "complaint_intake",
+        task_id: "resolve_contact",
+        tool_name: "find_contact",
+        tool_call_id: "call-42",
+        status: "completed",
+        tool_arguments: { phone: "4165550100" },
+        tool_response: { status: "not_found" },
+      }),
+    );
+    expect(state.toolCalls).toHaveLength(1);
+    expect(state.toolCalls[0]).toMatchObject({
+      id: "call-42",
+      workflowId: "complaint_intake",
+      taskId: "resolve_contact",
+      status: "completed",
+      arguments: { phone: "4165550100" },
+      response: { status: "not_found" },
+    });
+    expect(state.toolCalls[0].completedAt).toBeTruthy();
   });
 
   it("accumulates unique variable updates for each task", () => {

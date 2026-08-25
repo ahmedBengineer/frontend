@@ -30,6 +30,7 @@ export interface AssistantSection {
 export interface CollectField {
   state: string;
   schema?: Record<string, unknown>;
+  required?: boolean;
   [key: string]: unknown;
 }
 
@@ -44,6 +45,7 @@ export interface CompletionValidator {
 
 export interface Task {
   kind: string;
+  ui?: { position?: { x: number; y: number } };
   description?: string;
   entry_prompt?: string;
   on_enter_instructions?: string;
@@ -74,6 +76,8 @@ export interface Task {
 export interface Workflow {
   task_group: Record<string, Task>;
   task_order: string[];
+  entry_task_id?: string;
+  task_edges?: SupervisorTaskEdge[];
   description?: string;
   start_phrase?: string;
   interruptible_by?: string[];
@@ -146,6 +150,15 @@ export interface LinearEdge {
   source: string;
   target: string;
   source_handle?: "success" | "error" | string;
+  label?: string;
+  condition?: LinearCondition;
+  default?: boolean;
+}
+
+export interface SupervisorTaskEdge {
+  id: string;
+  source: string;
+  target: string;
   label?: string;
   condition?: LinearCondition;
   default?: boolean;

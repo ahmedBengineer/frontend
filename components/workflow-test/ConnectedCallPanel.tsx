@@ -17,11 +17,12 @@ import {
   PhoneOff,
   Radio,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AgentAudioVisualizerAura } from "@/components/agents-ui/agent-audio-visualizer-aura";
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import { Transcript } from "./Transcript";
+import { ToolCallHistory } from "./ToolCallHistory";
 import type {
   ConnectionDetails,
   WorkflowExecutionState,
@@ -46,7 +47,9 @@ export function ConnectedCallPanel({
   const connectionState = useConnectionState();
   const { name: roomName } = useRoomInfo();
   const { localParticipant } = useLocalParticipant();
-  const [tab, setTab] = useState<"conversation" | "execution">("conversation");
+  const [tab, setTab] = useState<"conversation" | "execution" | "tools">(
+    "conversation",
+  );
   const [seconds, setSeconds] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
   const enabledMic = useRef(false);
@@ -144,16 +147,18 @@ export function ConnectedCallPanel({
         </div>
       </div>
       <nav
-        className="grid grid-cols-2 border-b dark:border-slate-800"
+        className="grid grid-cols-3 border-b dark:border-slate-800"
         role="tablist"
         aria-label="Call information"
       >
-        {(["conversation", "execution"] as const).map((value) => (
+        {(["conversation", "execution", "tools"] as const).map((value) => (
           <button
             key={value}
+            id={`call-tab-${value}`}
             type="button"
             role="tab"
             aria-selected={tab === value}
+            aria-controls={`call-panel-${value}`}
             onClick={() => setTab(value)}
             className={`border-b-2 px-3 py-3 text-xs font-semibold capitalize ${tab === value ? "border-cyan-500 text-cyan-600" : "border-transparent text-slate-400"}`}
           >
@@ -161,15 +166,43 @@ export function ConnectedCallPanel({
             {value === "execution" && execution.events.length
               ? ` (${execution.events.length})`
               : ""}
+            {value === "tools" && execution.toolCalls.length
+              ? ` (${execution.toolCalls.length})`
+              : ""}
           </button>
         ))}
       </nav>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === "conversation" ? (
-          <Transcript agentAudioTrack={voiceAssistant.audioTrack} />
-        ) : (
+        <div
+          id="call-panel-conversation"
+          role="tabpanel"
+          aria-labelledby="call-tab-conversation"
+          hidden={tab !== "conversation"}
+          className="h-full"
+        >
+          <Transcript
+            agentAudioTrack={voiceAssistant.audioTrack}
+            execution={execution}
+          />
+        </div>
+        <div
+          id="call-panel-execution"
+          role="tabpanel"
+          aria-labelledby="call-tab-execution"
+          hidden={tab !== "execution"}
+          className="h-full"
+        >
           <ExecutionTimeline state={execution} />
-        )}
+        </div>
+        <div
+          id="call-panel-tools"
+          role="tabpanel"
+          aria-labelledby="call-tab-tools"
+          hidden={tab !== "tools"}
+          className="h-full"
+        >
+          <ToolCallHistory state={execution} />
+        </div>
       </div>
       <div className="space-y-3 border-t p-4 dark:border-slate-800">
         <StartAudio label="Enable agent audio" />

@@ -6,20 +6,44 @@ import {
   useLocalParticipant,
   useTrackTranscription,
 } from "@livekit/components-react";
-import { Send } from "lucide-react";
+import { Download, Send } from "lucide-react";
 import { Track, type TranscriptionSegment } from "livekit-client";
 import React from "react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { WorkflowExecutionState } from "@/lib/workflow-test/contracts";
 
 const MAX_CHAT_LENGTH = 2000;
 
-interface TranscriptMessage {
+export interface TranscriptMessage {
   id: string;
   text: string;
   speaker: "Agent" | "You";
   isSelf: boolean;
   timestamp: number;
   final: boolean;
+  source: "transcription" | "chat";
+}
+
+export function buildConversationExport(
+  messages: TranscriptMessage[],
+  execution?: WorkflowExecutionState,
+) {
+  return {
+    schema_version: 1,
+    type: "smartconvo.conversation",
+    session_id: execution?.sessionId ?? null,
+    workflow: execution?.currentWorkflowId ?? null,
+    task: execution?.currentTaskId ?? null,
+    exported_at: new Date().toISOString(),
+    messages: messages.map((message) => ({
+      id: message.id,
+      speaker: message.speaker,
+      text: message.text,
+      source: message.source,
+      timestamp: new Date(message.timestamp).toISOString(),
+      final: message.final,
+    })),
+  };
 }
 
 function timestampFor(id: string, timestamps: Map<string, number>): number {
@@ -42,13 +66,16 @@ function messagesFromSegments(
     isSelf: speaker === "You",
     timestamp: timestampFor(`${speaker}:${segment.id}`, timestamps),
     final: segment.final,
+    source: "transcription",
   }));
 }
 
 export function Transcript({
   agentAudioTrack,
+  execution,
 }: {
   agentAudioTrack?: TrackReferenceOrPlaceholder;
+  execution?: WorkflowExecutionState;
 }) {
   const agent = useTrackTranscription(agentAudioTrack);
   const { localParticipant } = useLocalParticipant();
@@ -78,6 +105,7 @@ export function Transcript({
             isSelf,
             timestamp: message.timestamp,
             final: true,
+            source: "chat",
           };
         }),
       ].sort((left, right) => left.timestamp - right.timestamp),
@@ -107,8 +135,37 @@ export function Transcript({
     }
   }
 
+  function exportConversation() {
+    const payload = buildConversationExport(messages, execution);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `smartconvo-conversation-${execution?.sessionId ?? "session"}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-center justify-between border-b px-3 py-2 dark:border-slate-800">
+        <span className="text-[10px] text-slate-400">
+          {messages.length} message{messages.length === 1 ? "" : "s"}
+        </span>
+        <button
+          type="button"
+          onClick={exportConversation}
+          disabled={!messages.length}
+          className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <Download className="h-3 w-3" />
+          Export JSON
+        </button>
+      </div>
       <div
         className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4"
         aria-live="polite"

@@ -19,8 +19,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Task } from "../types";
-import type { ExecutionStatus } from "@/lib/workflow-test/contracts";
-import { getTaskStateReferences } from "../utils/workflowSelectors";
+import type {
+  ExecutionStatus,
+  ToolInvocationRecord,
+} from "@/lib/workflow-test/contracts";
+import {
+  getTaskStateReferences,
+  getTaskToolReferences,
+} from "../utils/workflowSelectors";
 
 const KINDS: Record<
   string,
@@ -70,12 +76,14 @@ export interface TaskNodeData extends Record<string, unknown> {
   toolCount: number;
   variableCount: number;
   unsequenced?: boolean;
+  isEntry?: boolean;
   onSelect?: () => void;
   onOpenInstructions?: () => void;
   executionStatus?: ExecutionStatus;
   toolStatuses?: Record<string, ExecutionStatus>;
   updatedStateFields?: string[];
   stateValues?: Record<string, unknown>;
+  toolCalls?: ToolInvocationRecord[];
 }
 
 export type TaskNodeType = Node<TaskNodeData, "taskNode">;
@@ -91,6 +99,15 @@ function formatStateValue(value: unknown): string {
   }
 }
 
+function formatToolValue(value: unknown): string {
+  if (value === undefined) return "Not available";
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 export function TaskNode({ data, selected }: NodeProps<TaskNodeType>) {
   const { taskId, task, toolCount, variableCount, unsequenced } = data;
   const k = KINDS[task.kind] ?? DEFAULT_KIND;
@@ -99,6 +116,7 @@ export function TaskNode({ data, selected }: NodeProps<TaskNodeType>) {
   const visibleStateFields = Array.from(
     new Set([...getTaskStateReferences(task), ...updatedStateFields]),
   );
+  const visibleTools = getTaskToolReferences(task);
   const instructionPreview = [
     task.entry_prompt,
     task.on_enter_instructions,
@@ -142,6 +160,11 @@ export function TaskNode({ data, selected }: NodeProps<TaskNodeType>) {
         <span className="absolute -right-2 -top-3 z-20 inline-flex items-center gap-1 rounded-full bg-cyan-500 px-2 py-1 text-[9px] font-bold tracking-[0.12em] text-slate-950 shadow-lg dark:bg-cyan-300">
           <span className="h-1.5 w-1.5 rounded-full bg-slate-950 animate-pulse" />
           LIVE TASK
+        </span>
+      )}
+      {data.isEntry && data.executionStatus !== "active" && (
+        <span className="absolute -left-2 -top-3 z-20 rounded-full bg-emerald-500 px-2 py-1 text-[9px] font-bold tracking-wide text-white shadow">
+          ENTRY
         </span>
       )}
       {/* Accent strip */}
@@ -299,29 +322,66 @@ export function TaskNode({ data, selected }: NodeProps<TaskNodeType>) {
             </div>
           </TooltipProvider>
         )}
-        {(task.tools ?? []).length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {(task.tools ?? []).slice(0, 4).map((name) => {
-              const status = data.toolStatuses?.[name];
-              return (
-                <span
-                  key={name}
-                  className={cn(
-                    "max-w-full truncate rounded-md border px-1.5 py-0.5 font-mono text-[9px]",
-                    status === "active" &&
-                      "border-cyan-400 bg-cyan-50 text-cyan-700",
-                    status === "completed" &&
-                      "border-emerald-400 bg-emerald-50 text-emerald-700",
-                    status === "failed" &&
-                      "border-red-400 bg-red-50 text-red-700",
-                  )}
-                >
-                  {name}
-                  {status && status !== "idle" ? ` · ${status}` : ""}
-                </span>
-              );
-            })}
-          </div>
+        {visibleTools.length > 0 && (
+          <TooltipProvider delayDuration={150}>
+            <div className="mt-2 flex flex-wrap gap-1" aria-label="Task tools">
+              {visibleTools.slice(0, 4).map((name) => {
+                const status = data.toolStatuses?.[name];
+                const calls = (data.toolCalls ?? []).filter(
+                  (call) => call.toolName === name,
+                );
+                const latestCall = calls[calls.length - 1];
+                return (
+                  <Tooltip key={name}>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={cn(
+                          "max-w-full cursor-help truncate rounded-md border px-1.5 py-0.5 font-mono text-[9px]",
+                          status === "active" &&
+                            "border-cyan-400 bg-cyan-50 text-cyan-700",
+                          status === "completed" &&
+                            "border-emerald-400 bg-emerald-50 text-emerald-700",
+                          status === "failed" &&
+                            "border-red-400 bg-red-50 text-red-700",
+                        )}
+                        aria-label={`Tool ${name}`}
+                      >
+                        {name}
+                        {status && status !== "idle" ? ` · ${status}` : ""}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-h-80 w-96 overflow-auto text-xs">
+                      <p className="font-mono font-semibold">{name}</p>
+                      {!latestCall ? (
+                        <p className="mt-1 text-slate-400">Not called in this test.</p>
+                      ) : (
+                        <div className="mt-2 space-y-2">
+                          <p>
+                            {latestCall.status} · {calls.length} call{calls.length === 1 ? "" : "s"} ·{" "}
+                            {new Date(latestCall.startedAt).toLocaleTimeString()}
+                          </p>
+                          <div>
+                            <p className="font-semibold">Parameters</p>
+                            <pre className="mt-1 whitespace-pre-wrap break-all rounded bg-slate-950 p-2 text-[10px] text-slate-100">
+                              {formatToolValue(latestCall.arguments)}
+                            </pre>
+                          </div>
+                          <div>
+                            <p className="font-semibold">
+                              {latestCall.error ? "Error" : "Response"}
+                            </p>
+                            <pre className="mt-1 whitespace-pre-wrap break-all rounded bg-slate-950 p-2 text-[10px] text-slate-100">
+                              {latestCall.error ?? formatToolValue(latestCall.response)}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </TooltipProvider>
         )}
       </div>
 

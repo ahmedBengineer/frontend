@@ -649,6 +649,23 @@ export function TaskInspector({
     }
   }
 
+  function setAsEntryTask() {
+    onUpdate((previous) => {
+      const next = structuredClone(previous);
+      const workflow = next.workflows?.[workflowId];
+      if (!workflow) return previous;
+      next.schema_version = 2;
+      next.architecture = "supervisor";
+      workflow.entry_task_id = taskId;
+      workflow.task_edges ??= workflow.task_order.slice(1).map((target, index) => ({
+        id: `${workflow.task_order[index]}_to_${target}`,
+        source: workflow.task_order[index],
+        target,
+      }));
+      return next;
+    });
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* Tab bar — horizontally scrollable so all 6 tabs always reachable */}
@@ -698,6 +715,19 @@ export function TaskInspector({
               value={task.description ?? ""}
               onSave={(v) => updateField("description", v)}
             />
+            {jsonObject.workflows?.[workflowId]?.task_edges && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={jsonObject.workflows[workflowId].entry_task_id === taskId}
+                onClick={setAsEntryTask}
+              >
+                {jsonObject.workflows[workflowId].entry_task_id === taskId
+                  ? "Entry task"
+                  : "Set as entry task"}
+              </Button>
+            )}
             <Button
               variant="destructive"
               size="sm"
@@ -728,6 +758,22 @@ export function TaskInspector({
                           <span className="font-mono text-[11px] text-violet-500">
                             {field.state}
                           </span>
+                          <label className="ml-auto flex items-center gap-1 text-[10px] text-slate-500">
+                            <input
+                              type="checkbox"
+                              checked={field.required !== false}
+                              onChange={(event) =>
+                                onUpdate((previous) => {
+                                  const next = structuredClone(previous);
+                                  const collect = next.workflows?.[workflowId]?.task_group?.[taskId]?.collect;
+                                  if (!collect?.[name]) return previous;
+                                  collect[name].required = event.target.checked;
+                                  return next;
+                                })
+                              }
+                            />
+                            required
+                          </label>
                         </div>
                         {field.schema && (
                           <div className="mt-2">

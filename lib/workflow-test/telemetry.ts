@@ -3,6 +3,7 @@ import {
   type AgentId,
   type ExecutionStatus,
   type WorkflowExecutionState,
+  type ToolInvocationRecord,
   type WorkflowSnapshotV1,
   type WorkflowTelemetryEventType,
   type WorkflowTelemetryEventV1,
@@ -11,6 +12,8 @@ import {
 const EVENT_TYPES = new Set<string>(TELEMETRY_EVENT_TYPES);
 const MAX_TEXT = 256;
 const MAX_EVENTS = 200;
+const MAX_TOOL_CALLS = 100;
+const MAX_TOOL_PAYLOAD = 16_384;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -60,6 +63,35 @@ function nullableStateValues(
     return undefined;
   }
   return Object.fromEntries(entries);
+}
+
+function nullableToolArguments(
+  value: unknown,
+): Record<string, unknown> | null | undefined {
+  if (value === null || value === undefined) return null;
+  if (!isRecord(value)) return undefined;
+  try {
+    if (JSON.stringify(value).length > MAX_TOOL_PAYLOAD) return undefined;
+  } catch {
+    return undefined;
+  }
+  return value;
+}
+
+function boundedToolResponse(value: unknown): unknown | undefined {
+  if (value === undefined) return undefined;
+  try {
+    if (JSON.stringify(value).length > MAX_TOOL_PAYLOAD) return undefined;
+  } catch {
+    return undefined;
+  }
+  return value;
+}
+
+function nullableToolError(value: unknown): string | null | undefined {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string" || value.length > 4096) return undefined;
+  return value;
 }
 
 function validAgentId(value: unknown): value is AgentId | null {
@@ -121,10 +153,28 @@ export function parseTelemetryEvent(
   const status = nullableText(value.status);
   const stateFields = nullableTextArray(value.state_fields);
   const stateValues = nullableStateValues(value.state_values);
+  const toolCallId = nullableText(value.tool_call_id ?? null);
+  const toolArguments = nullableToolArguments(value.tool_arguments);
+  const toolResponse = boundedToolResponse(value.tool_response);
+  const toolError = nullableToolError(value.tool_error);
   if (
-    [workflowId, taskId, nodeId, edgeId, toolName, status, stateFields, stateValues].some(
+    [
+      workflowId,
+      taskId,
+      nodeId,
+      edgeId,
+      toolName,
+      status,
+      stateFields,
+      stateValues,
+      toolCallId,
+      toolArguments,
+      toolError,
+    ].some(
       (item) => item === undefined,
-    )
+    ) ||
+    (Object.prototype.hasOwnProperty.call(value, "tool_response") &&
+      toolResponse === undefined)
   ) {
     return null;
   }
@@ -145,6 +195,12 @@ export function parseTelemetryEvent(
     status: status as string | null,
     state_fields: stateFields as string[] | null,
     state_values: stateValues as Record<string, unknown> | null,
+    ...(toolCallId ? { tool_call_id: toolCallId } : {}),
+    ...(toolArguments ? { tool_arguments: toolArguments } : {}),
+    ...(Object.prototype.hasOwnProperty.call(value, "tool_response")
+      ? { tool_response: toolResponse }
+      : {}),
+    ...(toolError ? { tool_error: toolError } : {}),
   };
 }
 
@@ -207,6 +263,8 @@ export function createExecutionState(): WorkflowExecutionState {
     toolStatuses: {},
     updatedStateFields: {},
     stateValues: {},
+    latestStateValues: {},
+    toolCalls: [],
     currentWorkflowId: null,
     currentTaskId: null,
     currentEdgeId: null,
@@ -348,17 +406,59 @@ export function applyTelemetryEvent(
     case "tool.completed":
     case "tool.failed":
       if (!workflowId || !taskId || !event.tool_name) return next;
+      const matchingIndex = event.tool_call_id
+        ? next.toolCalls.findIndex((call) => call.id === event.tool_call_id)
+        : event.type === "tool.started"
+          ? -1
+          : next.toolCalls.findLastIndex(
+              (call) =>
+                call.workflowId === workflowId &&
+                call.taskId === taskId &&
+                call.toolName === event.tool_name &&
+                call.status === "active",
+            );
+      const toolStatus =
+        event.type === "tool.started"
+          ? "active"
+          : event.type === "tool.failed"
+            ? "failed"
+            : "completed";
+      const existing = matchingIndex >= 0 ? next.toolCalls[matchingIndex] : null;
+      const toolCallId =
+        event.tool_call_id ??
+        existing?.id ??
+        `${event.session_id}:${event.seq}:${workflowId}:${taskId}:${event.tool_name}`;
+      const invocation: ToolInvocationRecord = {
+        id: toolCallId,
+        workflowId,
+        taskId,
+        toolName: event.tool_name,
+        status: toolStatus,
+        startedAt: existing?.startedAt ?? event.timestamp,
+        ...(event.type !== "tool.started" ? { completedAt: event.timestamp } : {}),
+        arguments: event.tool_arguments ?? existing?.arguments ?? {},
+        ...(Object.prototype.hasOwnProperty.call(event, "tool_response")
+          ? { response: event.tool_response }
+          : existing && Object.prototype.hasOwnProperty.call(existing, "response")
+            ? { response: existing.response }
+            : {}),
+        ...(event.tool_error
+          ? { error: event.tool_error }
+          : existing?.error
+            ? { error: existing.error }
+            : {}),
+      };
+      const toolCalls = [...next.toolCalls];
+      if (matchingIndex >= 0) toolCalls[matchingIndex] = invocation;
+      else toolCalls.push(invocation);
       return {
         ...next,
         toolStatuses: {
           ...next.toolStatuses,
           [toolStatusKey(workflowId, taskId, event.tool_name)]:
-            event.type === "tool.started"
-              ? "active"
-              : event.type === "tool.failed"
-                ? "failed"
-                : "completed",
+            toolStatus,
         },
+        toolCalls: toolCalls.slice(-MAX_TOOL_CALLS),
         currentWorkflowId: workflowId,
         currentTaskId: taskId,
       };
@@ -388,6 +488,10 @@ export function applyTelemetryEvent(
             ...(next.stateValues[stateKey] ?? {}),
             ...(event.state_values ?? {}),
           },
+        },
+        latestStateValues: {
+          ...next.latestStateValues,
+          ...(event.state_values ?? {}),
         },
         currentWorkflowId: workflowId,
         currentTaskId: taskId,

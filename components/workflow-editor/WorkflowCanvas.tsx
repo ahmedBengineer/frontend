@@ -13,6 +13,9 @@ import {
   useReactFlow,
   useNodesInitialized,
   type NodeMouseHandler,
+  type EdgeMouseHandler,
+  type OnNodeDrag,
+  type Connection,
   type Node,
   type OnNodesChange,
 } from "@xyflow/react";
@@ -35,6 +38,9 @@ import {
   Code2,
   Maximize2,
   MapPinOff,
+  Undo2,
+  Redo2,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -49,14 +55,24 @@ import { WorkflowInspector } from "./inspectors/WorkflowInspector";
 import { TaskInspector } from "./inspectors/TaskInspector";
 import { VariableInspector } from "./inspectors/VariableInspector";
 import { JsonInspector } from "./inspectors/JsonInspector";
+import { SupervisorEdgeInspector } from "./inspectors/SupervisorEdgeInspector";
 import { StudioActions } from "./StudioActions";
 
 import { buildMainAgentGraph, buildWorkflowGraph } from "./utils/graphBuilder";
 import { getWorkflowStats } from "./utils/workflowSelectors";
 import {
   validateTaskReferences,
+  validateWorkflowDefinition,
   validateWorkflowReferences,
 } from "./utils/validation";
+import { createTask, removeTask } from "./utils/editorMutations";
+import {
+  addSupervisorTask,
+  connectSupervisorTasks,
+  parseSupervisorTaskNodeId,
+  removeSupervisorEdge,
+  setSupervisorTaskPosition,
+} from "./utils/supervisorGraph";
 
 import type { AgentJsonObject, AgentTool, SelectedEntity } from "./types";
 import type { SaveMethod } from "./hooks/useAgentDefinition";
@@ -68,7 +84,10 @@ import {
   savePositions,
   structuralHash,
 } from "./utils/layoutStorage";
-import { getAutoFollowNodeId } from "./utils/testNavigation";
+import {
+  getAutoFollowNodeId,
+  getAutoFollowView,
+} from "./utils/testNavigation";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -361,6 +380,7 @@ function InspectorPanel({
   const title = (() => {
     if (!entity) return "";
     if (entity.type === "task") return entity.taskId ?? "Task";
+    if (entity.type === "edge") return entity.edgeId ?? "Transition";
     if (entity.type === "workflow") return entity.workflowId ?? "Workflow";
     if (entity.type === "router") {
       const routingCount =
@@ -467,6 +487,16 @@ function InspectorPanel({
               focusRequestId={entity.inspectorRequestId}
             />
           )}
+        {entity?.type === "edge" &&
+          entity.workflowId &&
+          entity.edgeId && (
+            <SupervisorEdgeInspector
+              workflowId={entity.workflowId}
+              edgeId={entity.edgeId}
+              jsonObject={jsonObject}
+              onUpdate={onUpdate}
+            />
+          )}
         {entity?.type === "variable" && (
           <div className="h-full overflow-y-auto px-5 py-4">
             <VariableInspector jsonObject={jsonObject} onUpdate={onUpdate} />
@@ -554,6 +584,45 @@ function DetailStats({
   );
 }
 
+type PaletteTaskKind = "collect" | "action" | "answer";
+
+function TaskPalette({
+  disabledKinds,
+  onCreate,
+}: {
+  disabledKinds: PaletteTaskKind[];
+  onCreate: (kind: PaletteTaskKind) => void;
+}) {
+  return (
+    <div
+      className="nodrag nopan flex items-center gap-1 rounded-xl border border-slate-200 bg-white/95 p-1 shadow-sm"
+      style={{ pointerEvents: "all" }}
+      aria-label="Task palette"
+    >
+      {(["collect", "action", "answer"] as PaletteTaskKind[]).map((kind) => {
+        const disabled = disabledKinds.includes(kind);
+        return (
+          <button
+            key={kind}
+            type="button"
+            disabled={disabled}
+            draggable={!disabled}
+            onDragStart={(event) => {
+              event.dataTransfer.setData("application/smartconvo-task-kind", kind);
+              event.dataTransfer.effectAllowed = "copy";
+            }}
+            onClick={() => onCreate(kind)}
+            className="flex h-8 items-center gap-1 rounded-lg px-2.5 text-[11px] font-semibold capitalize text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+            title={`Click or drag to create a ${kind} task`}
+          >
+            <Plus className="h-3.5 w-3.5" /> {kind}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main WorkflowCanvas component ───────────────────────────────────────────
 
 export interface WorkflowCanvasProps {
@@ -616,9 +685,10 @@ export function WorkflowCanvas({
 
   // ── Search ──────────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
-  const { fitView, getNode, getViewport, setCenter } = useReactFlow();
+  const { fitView, getNode, getViewport, setCenter, screenToFlowPosition } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
   const lastFollowedNode = useRef<string | null>(null);
+  const lastAutoOpenedWorkflow = useRef<string | null>(null);
   const layoutHash = useMemo(() => structuralHash(jsonObject), [jsonObject]);
   const storageKey = useMemo(
     () =>
@@ -630,6 +700,41 @@ export function WorkflowCanvas({
     [activeWorkflowId, agentId, layoutHash, viewMode],
   );
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoStack = useRef<AgentJsonObject[]>([]);
+  const redoStack = useRef<AgentJsonObject[]>([]);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+
+  const applyUpdate = useCallback(
+    (updater: (previous: AgentJsonObject) => AgentJsonObject) => {
+      onUpdate((previous) => {
+        const next = updater(previous);
+        if (next === previous) return previous;
+        undoStack.current.push(structuredClone(previous));
+        if (undoStack.current.length > 50) undoStack.current.shift();
+        redoStack.current = [];
+        setHistoryVersion((value) => value + 1);
+        return next;
+      });
+    },
+    [onUpdate],
+  );
+
+  const undo = useCallback(() => {
+    const previous = undoStack.current.pop();
+    if (!previous) return;
+    redoStack.current.push(structuredClone(jsonObject));
+    onReplaceJson(previous);
+    setHistoryVersion((value) => value + 1);
+  }, [jsonObject, onReplaceJson]);
+
+  const redo = useCallback(() => {
+    const next = redoStack.current.pop();
+    if (!next) return;
+    undoStack.current.push(structuredClone(jsonObject));
+    onReplaceJson(next);
+    setHistoryVersion((value) => value + 1);
+  }, [jsonObject, onReplaceJson]);
 
   // ── Derived nodes/edges ─────────────────────────────────────────────────────
   const { nodes: derivedNodes, edges: derivedEdges } = useMemo(() => {
@@ -729,10 +834,13 @@ export function WorkflowCanvas({
   }, []);
 
   const goBack = useCallback(() => {
+    if (readOnly) {
+      lastAutoOpenedWorkflow.current = execution?.currentWorkflowId ?? null;
+    }
     setViewMode("main");
     setActiveWorkflowId(null);
     setInspectorOpen(false);
-  }, []);
+  }, [execution?.currentWorkflowId, readOnly]);
 
   // Inject per-node callbacks
   const nodesWithCallbacks: Node[] = useMemo(
@@ -798,9 +906,12 @@ export function WorkflowCanvas({
                   `${data.workflowId}/${data.taskId}`
                 ] ?? [],
               stateValues:
-                execution?.stateValues[
-                  `${data.workflowId}/${data.taskId}`
-                ] ?? {},
+                execution?.latestStateValues ?? {},
+              toolCalls: execution?.toolCalls.filter(
+                (call) =>
+                  call.workflowId === data.workflowId &&
+                  call.taskId === data.taskId,
+              ),
             },
           };
         }
@@ -875,14 +986,163 @@ export function WorkflowCanvas({
     [openInspector],
   );
 
+  useEffect(() => {
+    if (!readOnly || !autoFollow) return;
+    const currentWorkflowId = execution?.currentWorkflowId ?? null;
+    const target = getAutoFollowView({
+      currentWorkflowId,
+      availableWorkflowIds: Object.keys(jsonObject.workflows ?? {}),
+      routerActive: execution?.routerStatus === "active",
+    });
+    if (!target) return;
+    if (target.viewMode === "main") {
+      lastAutoOpenedWorkflow.current = null;
+      if (viewMode !== "main" || activeWorkflowId !== null) {
+        setViewMode("main");
+        setActiveWorkflowId(null);
+        setInspectorOpen(false);
+      }
+      return;
+    }
+    if (lastAutoOpenedWorkflow.current === currentWorkflowId) return;
+    lastAutoOpenedWorkflow.current = currentWorkflowId;
+    setViewMode("detail");
+    setActiveWorkflowId(currentWorkflowId);
+    setInspectorOpen(false);
+    lastFollowedNode.current = null;
+  }, [
+    activeWorkflowId,
+    autoFollow,
+    execution?.currentWorkflowId,
+    execution?.routerStatus,
+    jsonObject.workflows,
+    readOnly,
+    viewMode,
+  ]);
+
+  const createPaletteTask = useCallback(
+    (kind: PaletteTaskKind, position?: { x: number; y: number }) => {
+      if (!activeWorkflowId) return;
+      try {
+        const workflow = jsonObject.workflows?.[activeWorkflowId];
+        if (!workflow) return;
+        let suffix = 1;
+        let taskId = `${kind}_${suffix}`;
+        while (workflow.task_group[taskId]) taskId = `${kind}_${++suffix}`;
+        const task = createTask(kind, {
+          description: `New ${kind} task`,
+          stateField: Object.keys(jsonObject.state?.fields ?? {})[0],
+          toolName: availableTools[0]?.name,
+        });
+        const fallbackPosition = {
+          x: 60 + (workflow.task_order.length % 3) * 320,
+          y: 60 + Math.floor(workflow.task_order.length / 3) * 280,
+        };
+        applyUpdate((current) =>
+          addSupervisorTask(
+            current,
+            activeWorkflowId,
+            taskId,
+            task,
+            position ?? fallbackPosition,
+          ),
+        );
+        setMutationError(null);
+        openInspector({ type: "task", workflowId: activeWorkflowId, taskId });
+      } catch (reason) {
+        setMutationError(reason instanceof Error ? reason.message : "Could not create task");
+      }
+    },
+    [activeWorkflowId, applyUpdate, availableTools, jsonObject, openInspector],
+  );
+
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      const source = connection.source ? parseSupervisorTaskNodeId(connection.source) : null;
+      const target = connection.target ? parseSupervisorTaskNodeId(connection.target) : null;
+      if (!source || !target || source.workflowId !== target.workflowId) return;
+      try {
+        applyUpdate((current) =>
+          connectSupervisorTasks(
+            current,
+            source.workflowId,
+            source.taskId,
+            target.taskId,
+            Object.keys(current.state?.fields ?? {})[0],
+          ),
+        );
+        setMutationError(null);
+      } catch (reason) {
+        setMutationError(reason instanceof Error ? reason.message : "Could not connect tasks");
+      }
+    },
+    [applyUpdate],
+  );
+
+  const handleNodeDragStop: OnNodeDrag = useCallback(
+    (_event, node) => {
+      const parsed = parseSupervisorTaskNodeId(node.id);
+      if (!parsed) return;
+      applyUpdate((current) =>
+        setSupervisorTaskPosition(current, parsed.workflowId, parsed.taskId, node.position),
+      );
+    },
+    [applyUpdate],
+  );
+
+  const handleEdgeClick: EdgeMouseHandler = useCallback(
+    (_event, edge) => {
+      if (!activeWorkflowId || !jsonObject.workflows?.[activeWorkflowId]?.task_edges) return;
+      openInspector({ type: "edge", workflowId: activeWorkflowId, edgeId: edge.id });
+    },
+    [activeWorkflowId, jsonObject.workflows, openInspector],
+  );
+
+  const handleNodesDelete = useCallback(
+    (nodes: Node[]) => {
+      if (!activeWorkflowId) return;
+      try {
+        applyUpdate((current) =>
+          nodes.reduce((next, node) => {
+            const parsed = parseSupervisorTaskNodeId(node.id);
+            return parsed ? removeTask(next, parsed.workflowId, parsed.taskId) : next;
+          }, current),
+        );
+        setInspectorOpen(false);
+      } catch (reason) {
+        setMutationError(reason instanceof Error ? reason.message : "Could not delete task");
+      }
+    },
+    [activeWorkflowId, applyUpdate],
+  );
+
+  const handleEdgesDelete = useCallback(
+    (edges: { id: string }[]) => {
+      if (!activeWorkflowId) return;
+      applyUpdate((current) =>
+        edges.reduce(
+          (next, edge) => removeSupervisorEdge(next, activeWorkflowId, edge.id),
+          current,
+        ),
+      );
+      setInspectorOpen(false);
+    },
+    [activeWorkflowId, applyUpdate],
+  );
+
   // ── Warnings ────────────────────────────────────────────────────────────────
   const warningMessages = useMemo(() => {
     const all = validateWorkflowReferences(jsonObject);
     if (viewMode === "detail" && activeWorkflowId) {
       all.push(...validateTaskReferences(activeWorkflowId, jsonObject));
     }
-    return all.map((w) => w.message);
-  }, [jsonObject, viewMode, activeWorkflowId]);
+    const definition = validateWorkflowDefinition(
+      jsonObject,
+      availableTools.map((tool) => tool.name),
+    );
+    all.push(...definition.errors);
+    return [...new Set([...(mutationError ? [mutationError] : []), ...all.map((w) => w.message)])];
+  }, [jsonObject, viewMode, activeWorkflowId, availableTools, mutationError]);
 
   // Key that drives FitViewTrigger — change on view switch
   const viewKey = `${viewMode}:${activeWorkflowId ?? "main"}`;
@@ -900,17 +1160,40 @@ export function WorkflowCanvas({
     pointerEvents: "none",
   };
 
+  const edgesWithExecution = flowEdges.map((edge) => ({
+    ...edge,
+    data: { ...edge.data, active: execution?.currentEdgeId === edge.id },
+  }));
+
   return (
     <ReactFlow
       nodes={nodesWithCallbacks}
-      edges={flowEdges}
+      edges={edgesWithExecution}
       onNodesChange={onNodesChange as OnNodesChange}
       onEdgesChange={onEdgesChange}
       onNodeClick={handleNodeClick}
+      onEdgeClick={handleEdgeClick}
+      onNodeDragStop={handleNodeDragStop}
+      onConnect={handleConnect}
+      onNodesDelete={handleNodesDelete}
+      onEdgesDelete={handleEdgesDelete}
+      onDragOver={(event) => {
+        if (viewMode !== "detail" || readOnly) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+      }}
+      onDrop={(event) => {
+        if (viewMode !== "detail" || readOnly) return;
+        event.preventDefault();
+        const kind = event.dataTransfer.getData("application/smartconvo-task-kind");
+        if (["collect", "action", "answer"].includes(kind))
+          createPaletteTask(kind as PaletteTaskKind, screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+      }}
       nodeTypes={NODE_TYPES}
       edgeTypes={EDGE_TYPES}
       nodesDraggable={!readOnly}
-      nodesConnectable={false}
+      nodesConnectable={!readOnly && viewMode === "detail"}
+      deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
       fitView
       fitViewOptions={{ padding: 0.25 }}
       minZoom={0.1}
@@ -986,7 +1269,7 @@ export function WorkflowCanvas({
             <StudioActions
               jsonObject={jsonObject}
               tools={availableTools}
-              onUpdate={onUpdate}
+              onUpdate={applyUpdate}
             />
           </div>
         </Panel>
@@ -999,6 +1282,35 @@ export function WorkflowCanvas({
           style={{ top: (readOnly ? 0 : TOOLBAR_H) + 54, left: 12, margin: 0 }}
         >
           <DetailStats workflowId={activeWorkflowId} jsonObject={jsonObject} />
+        </Panel>
+      )}
+
+      {readOnly && viewMode === "detail" && (
+        <Panel position="top-left" style={{ top: 12, left: 12, margin: 0 }}>
+          <button
+            type="button"
+            onClick={goBack}
+            className="nodrag nopan flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200"
+            style={{ pointerEvents: "all" }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            All Workflows
+          </button>
+        </Panel>
+      )}
+
+      {!readOnly && viewMode === "detail" && activeWorkflowId && (
+        <Panel
+          position="top-left"
+          style={{ top: TOOLBAR_H + 92, left: 12, margin: 0 }}
+        >
+          <TaskPalette
+            disabledKinds={[
+              ...(Object.keys(jsonObject.state?.fields ?? {}).length ? [] : ["collect" as const]),
+              ...(availableTools.length ? [] : ["action" as const, "answer" as const]),
+            ]}
+            onCreate={(kind) => createPaletteTask(kind)}
+          />
         </Panel>
       )}
 
@@ -1017,7 +1329,7 @@ export function WorkflowCanvas({
             entity={selectedEntity}
             jsonObject={jsonObject}
             onClose={() => setInspectorOpen(false)}
-            onUpdate={onUpdate}
+            onUpdate={applyUpdate}
             onReplaceJson={onReplaceJson}
             availableTools={availableTools}
             includeDefaultTools={includeDefaultTools}
@@ -1040,6 +1352,28 @@ export function WorkflowCanvas({
           >
             <Maximize2 className="h-4 w-4" />
           </button>
+          {!readOnly && (
+            <>
+              <button
+                type="button"
+                disabled={!undoStack.current.length}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"
+                onClick={undo}
+                title={`Undo (${historyVersion})`}
+              >
+                <Undo2 className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                disabled={!redoStack.current.length}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"
+                onClick={redo}
+                title="Redo"
+              >
+                <Redo2 className="h-4 w-4" />
+              </button>
+            </>
+          )}
           {!readOnly && (
             <button
               type="button"
