@@ -39,6 +39,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
+import { UnansweredQuestionsPanel } from "@/components/unanswered-questions-panel"
 import { useRouter } from 'next/navigation';
 
 type AgentConfigTabProps = { agentId: string }
@@ -51,6 +52,7 @@ const tabs = [
   { id: "voice-settings", label: "Voice Settings" },
   { id: "tools", label: "Tools & Numbers" }, 
   { id: "faq", label: "FAQ" },
+  { id: "unanswered", label: "Unanswered" },
   { id: "additional-settings", label: "Additional Settings" },
 ]
 
@@ -3577,6 +3579,8 @@ export default function AgentSettingsPage() {
         return <AgentConfigTab agentId={selectedAgent.id} />
       case "faq":
         return <FAQTab agentId={selectedAgent.id} />
+      case "unanswered":
+        return <UnansweredQuestionsPanel agentId={selectedAgent.id} />
       case "additional-settings":
         return <AdditionalSettingsTab agentId={selectedAgent.id} />
       default:
