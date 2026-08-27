@@ -314,7 +314,7 @@ function CallsTab() {
         if (!res.ok) throw new Error("Failed to fetch messages")
 
         const data = await res.json()
-        const groupedResults = data.results ? Object.values(data.results).flat() : []
+        const groupedResults: Message[] = data.results ? (Object.values(data.results) as Message[][]).flat() : []
         setMessages(groupedResults)
         setConversationTotalPages(data.total_pages || 1)
       } catch (err: any) {

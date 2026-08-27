@@ -2043,6 +2043,28 @@ function FAQTab({ agentId }: { agentId: string }) {
   const [faqs, setFaqs] = useState<FAQ[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Pagination
+  const FAQS_PER_PAGE = 40
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageInput, setPageInput] = useState("")
+  const totalPages = Math.max(1, Math.ceil(faqs.length / FAQS_PER_PAGE))
+  const paginatedFaqs = faqs.slice((currentPage - 1) * FAQS_PER_PAGE, currentPage * FAQS_PER_PAGE)
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages)
+  }, [totalPages, currentPage])
+
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (/^\d*$/.test(e.target.value)) setPageInput(e.target.value)
+  }
+
+  const handlePageInputSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return
+    const pageNum = parseInt(pageInput, 10)
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) setCurrentPage(pageNum)
+    setPageInput("")
+  }
+
   // Add dialog
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [addQuestion, setAddQuestion] = useState("")
@@ -2077,7 +2099,7 @@ function FAQTab({ agentId }: { agentId: string }) {
     }
   }
 
-  useEffect(() => { fetchFAQs() }, [agentId])
+  useEffect(() => { fetchFAQs(); setCurrentPage(1) }, [agentId])
 
   // ── Add ──────────────────────────────────────────────
   const handleAdd = async () => {
@@ -2237,14 +2259,14 @@ function FAQTab({ agentId }: { agentId: string }) {
           </div>
         ) : (
           <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden divide-y divide-slate-50">
-            {faqs.map((faq, idx) => (
+            {paginatedFaqs.map((faq, idx) => (
               <div
                 key={faq.id}
                 className="group flex items-start gap-5 px-6 py-5 hover:bg-slate-50/60 transition-colors duration-150"
               >
                 {/* Index badge */}
                 <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-slate-100 text-slate-500 text-xs font-medium flex items-center justify-center mt-0.5 group-hover:bg-slate-200 transition-colors">
-                  {idx + 1}
+                  {(currentPage - 1) * FAQS_PER_PAGE + idx + 1}
                 </div>
 
                 {/* Content */}
@@ -2280,6 +2302,41 @@ function FAQTab({ agentId }: { agentId: string }) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── Pagination ── */}
+        {!loading && totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <p className="text-xs text-slate-400 font-light tracking-wide whitespace-nowrap">
+              Page <span className="text-slate-700 font-medium">{currentPage}</span> of {totalPages}
+            </p>
+
+            <input
+              type="text"
+              inputMode="numeric"
+              value={pageInput}
+              onChange={handlePageInputChange}
+              onKeyDown={handlePageInputSubmit}
+              placeholder="Go to"
+              className="w-16 px-2 py-1.5 text-xs text-center rounded-lg border border-slate-200 text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200/60 transition-all"
+            />
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>
@@ -5729,20 +5786,20 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                           {msg.data.llm.headline && (
                             <p className="text-slate-800 font-light break-words leading-relaxed">{msg.data.llm.headline}</p>
                           )}
-                          {msg.data.llm.conflict_bullets?.length > 0 && (
+                          {(msg.data.llm.conflict_bullets?.length ?? 0) > 0 && (
                             <ul className="space-y-1.5">
-                              {msg.data.llm.conflict_bullets.map((b: string, idx: number) => (
+                              {msg.data.llm.conflict_bullets!.map((b: string, idx: number) => (
                                 <li key={idx} className="flex gap-2 text-xs text-slate-600 font-light break-words">
                                   <span className="text-rose-500 flex-shrink-0 mt-0.5">•</span>{b}
                                 </li>
                               ))}
                             </ul>
                           )}
-                          {msg.data.llm.recommendations?.length > 0 && (
+                          {(msg.data.llm.recommendations?.length ?? 0) > 0 && (
                             <div>
                               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Recommendations</p>
                               <ul className="space-y-1.5">
-                                {msg.data.llm.recommendations.map((r: string, idx: number) => (
+                                {msg.data.llm.recommendations!.map((r: string, idx: number) => (
                                   <li key={idx} className="flex gap-2 text-xs text-slate-600 font-light break-words">
                                     <span className="text-indigo-400 flex-shrink-0">💡</span>{r}
                                   </li>
@@ -5755,7 +5812,7 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                     )}
 
                     {/* ── Semantic Analysis ── */}
-                    {(msg.data.llm?.semantic_conflicts?.length > 0 || msg.data.llm?.semantic_headline) && (
+                    {((msg.data.llm?.semantic_conflicts?.length ?? 0) > 0 || msg.data.llm?.semantic_headline) && (
                       <div className="bg-white border border-rose-200 rounded-2xl overflow-hidden">
                         <div className="px-4 py-3 border-b border-rose-100 bg-rose-50 flex items-start gap-2">
                           <span className="text-rose-500 text-base leading-none mt-0.5">⚡</span>
@@ -5767,9 +5824,9 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                           </div>
                         </div>
 
-                        {msg.data.llm?.semantic_conflicts?.length > 0 && (
+                        {(msg.data.llm?.semantic_conflicts?.length ?? 0) > 0 && (
                           <div className="px-4 py-3 space-y-3">
-                            {msg.data.llm.semantic_conflicts.map((sc: any, idx: number) => (
+                            {msg.data.llm!.semantic_conflicts!.map((sc: any, idx: number) => (
                               <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2">
                                 <div className="flex items-start justify-between gap-2 flex-wrap">
                                   <p className="text-xs font-medium text-slate-800 break-words">{sc.agent_name}</p>
@@ -5791,11 +5848,11 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                           </div>
                         )}
 
-                        {msg.data.llm?.semantic_recommendations?.length > 0 && (
+                        {(msg.data.llm?.semantic_recommendations?.length ?? 0) > 0 && (
                           <div className="px-4 pt-0 pb-3 border-t border-rose-100">
                             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 mt-3">Semantic Recommendations</p>
                             <ul className="space-y-1.5">
-                              {msg.data.llm.semantic_recommendations.map((r: string, idx: number) => (
+                              {msg.data.llm!.semantic_recommendations!.map((r: string, idx: number) => (
                                 <li key={idx} className="flex gap-2 text-xs text-slate-600 font-light break-words">
                                   <span className="text-rose-400 flex-shrink-0">→</span>{r}
                                 </li>
@@ -5807,15 +5864,15 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                     )}
 
                     {/* ── Mentions ── */}
-                    {msg.data.mentions?.length > 0 && (
+                    {(msg.data.mentions?.length ?? 0) > 0 && (
                       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
                         <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
                           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-                            Mentions ({msg.data.mentions.length})
+                            Mentions ({msg.data.mentions!.length})
                           </p>
                         </div>
                         <div className="divide-y divide-slate-100">
-                          {msg.data.mentions.map((m: any, idx: number) => (
+                          {msg.data.mentions!.map((m: any, idx: number) => (
                             <div key={idx} className="px-4 py-3 space-y-1.5">
                               <div className="flex items-center justify-between gap-2 flex-wrap">
                                 <span className="text-xs font-medium text-slate-800 break-words">{m.agent_name}</span>
@@ -5845,7 +5902,7 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                     )}
 
                     {/* ── Insertion Plans (add intent) ── */}
-                    {msg.data.llm?.insertion_enabled && msg.data.llm?.insertion_plans?.length > 0 && (
+                    {msg.data.llm?.insertion_enabled && (msg.data.llm?.insertion_plans?.length ?? 0) > 0 && (
                       <div className="bg-white border border-emerald-200 rounded-2xl overflow-hidden">
                         <div className="px-4 py-3 border-b border-emerald-100 bg-emerald-50 flex items-center gap-2">
                           <Plus className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
@@ -5857,7 +5914,7 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                           </div>
                         </div>
                         <div className="px-4 py-3 space-y-3">
-                          {msg.data.llm.insertion_plans.map((plan: any, idx: number) => (
+                          {msg.data.llm!.insertion_plans!.map((plan: any, idx: number) => (
                             <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2">
                               <div className="flex items-start justify-between gap-2 flex-wrap">
                                 <p className="text-xs font-medium text-slate-800 break-words">{plan.agent_name}</p>
@@ -5878,11 +5935,11 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                             </div>
                           ))}
                         </div>
-                        {msg.data.llm.insertion_recommendations?.length > 0 && (
+                        {(msg.data.llm.insertion_recommendations?.length ?? 0) > 0 && (
                           <div className="px-4 pb-3 border-t border-emerald-100">
                             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 mt-3">Recommendations</p>
                             <ul className="space-y-1.5">
-                              {msg.data.llm.insertion_recommendations.map((r: string, idx: number) => (
+                              {msg.data.llm.insertion_recommendations!.map((r: string, idx: number) => (
                                 <li key={idx} className="flex gap-2 text-xs text-slate-600 font-light break-words">
                                   <span className="text-emerald-500 flex-shrink-0">→</span>{r}
                                 </li>
@@ -5894,7 +5951,7 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                     )}
 
                     {/* ── Removal Plans (remove intent) ── */}
-                    {msg.data.llm?.removal_enabled && msg.data.llm?.removal_plans?.length > 0 && (
+                    {msg.data.llm?.removal_enabled && (msg.data.llm?.removal_plans?.length ?? 0) > 0 && (
                       <div className="bg-white border border-rose-200 rounded-2xl overflow-hidden">
                         <div className="px-4 py-3 border-b border-rose-100 bg-rose-50 flex items-center gap-2">
                           <Minus className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
@@ -5906,7 +5963,7 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                           </div>
                         </div>
                         <div className="px-4 py-3 space-y-3">
-                          {msg.data.llm.removal_plans.map((plan: any, idx: number) => (
+                          {msg.data.llm!.removal_plans!.map((plan: any, idx: number) => (
                             <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2">
                               <p className="text-xs font-medium text-slate-800 break-words">{plan.agent_name}</p>
                               {plan.reason && (
@@ -5915,11 +5972,11 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                             </div>
                           ))}
                         </div>
-                        {msg.data.llm.removal_recommendations?.length > 0 && (
+                        {(msg.data.llm.removal_recommendations?.length ?? 0) > 0 && (
                           <div className="px-4 pb-3 border-t border-rose-100">
                             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 mt-3">Recommendations</p>
                             <ul className="space-y-1.5">
-                              {msg.data.llm.removal_recommendations.map((r: string, idx: number) => (
+                              {msg.data.llm.removal_recommendations!.map((r: string, idx: number) => (
                                 <li key={idx} className="flex gap-2 text-xs text-slate-600 font-light break-words">
                                   <span className="text-rose-400 flex-shrink-0">→</span>{r}
                                 </li>
@@ -5976,25 +6033,25 @@ export default function AgentConfigPage({ params }: { params: Promise<{ agentId:
                         </div>
                       </div>
                     )}
-                    {(msg.data.conflicts?.length > 0 || msg.data.repetitions?.length > 0) && (
+                    {((msg.data.conflicts?.length ?? 0) > 0 || (msg.data.repetitions?.length ?? 0) > 0) && (
                       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                        {msg.data.conflicts?.length > 0 && (
+                        {(msg.data.conflicts?.length ?? 0) > 0 && (
                           <div className="px-4 py-3">
                             <p className="text-[10px] font-semibold text-rose-400 uppercase tracking-widest mb-2">
-                              Conflicts ({msg.data.conflicts.length})
+                              Conflicts ({msg.data.conflicts!.length})
                             </p>
                             <div className="space-y-2">
-                              {msg.data.conflicts.map((c: FunctionalityConflict, idx: number) => (
+                              {msg.data.conflicts!.map((c: FunctionalityConflict, idx: number) => (
                                 <ConflictCard key={idx} conflict={c} />
                               ))}
                             </div>
                           </div>
                         )}
-                        {msg.data.repetitions?.length > 0 && (
+                        {(msg.data.repetitions?.length ?? 0) > 0 && (
                           <div className="px-4 py-3 border-t border-slate-100">
                             <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-widest mb-2">Repetitions</p>
                             <ul className="space-y-1.5">
-                              {msg.data.repetitions.map((r: any, idx: number) => (
+                              {msg.data.repetitions!.map((r: any, idx: number) => (
                                 <li key={idx} className="text-xs text-slate-600 font-light break-words">• {typeof r === "string" ? r : JSON.stringify(r)}</li>
                               ))}
                             </ul>

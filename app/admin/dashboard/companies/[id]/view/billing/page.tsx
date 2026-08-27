@@ -239,7 +239,7 @@ const getHeaders = () => ({
 
 export default function ViewCompanyBilling() {
   const params = useParams()
-  const companyId = parseInt(params.id, 10)
+  const companyId = parseInt(String(params.id ?? ""), 10)
   const { toast } = useToast()
 
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
