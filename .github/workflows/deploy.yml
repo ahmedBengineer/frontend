@@ -18,24 +18,21 @@ jobs:
           host: 107.23.136.20
           username: ubuntu
           key: ${{ secrets.HOSTINGERSSHKEY }}
+          command_timeout: 30m
           script: |
-            cd /home/ubuntu/frontend
-            git checkout dev
-            git pull origin dev
-            docker builder prune -af || true
-            docker image prune -af || true
-            docker compose up --build -d --remove-orphans
-            docker image prune -af --filter "until=24h" || true
-            docker builder prune -af --filter "until=24h" || true
-            sleep 10
-            curl -f http://localhost:3000 >/dev/null
+            bash /home/ubuntu/frontend/deploy-docker.sh dev
 
       - name: Slack Success (Dev)
         if: success()
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-          -H "Content-type: application/json" \
-          -d "{\"text\":\"✅ DEV Deployment Successful 🚀 | Repo: ${{ github.repository }} | Commit: ${{ github.event.head_commit.message }}\"}"
+          payload=$(jq -n \
+            --arg text "✅ DEV Deployment Successful 🚀 | Repo: ${{ github.repository }} | Commit: ${COMMIT_MESSAGE}" \
+            '{text: $text}')
+          curl --fail-with-body -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H "Content-type: application/json" \
+            -d "$payload"
 
       - name: Slack Failure (Dev)
         if: failure()
@@ -56,24 +53,21 @@ jobs:
           host: 98.93.251.56
           username: ubuntu
           key: ${{ secrets.PRODKEY }}
+          command_timeout: 30m
           script: |
-            cd /home/ubuntu/frontend
-            git checkout main
-            git pull origin main
-            docker builder prune -af || true
-            docker image prune -af || true
-            docker compose up --build -d --remove-orphans
-            docker image prune -af --filter "until=24h" || true
-            docker builder prune -af --filter "until=24h" || true
-            sleep 10
-            curl -f http://localhost:3000 >/dev/null
+            bash /home/ubuntu/frontend/deploy-docker.sh main
 
       - name: Slack Success (Prod)
         if: success()
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-          -H "Content-type: application/json" \
-          -d "{\"text\":\"🚀 PROD Deployment Successful ✅ | Repo: ${{ github.repository }} | Commit: ${{ github.event.head_commit.message }}\"}"
+          payload=$(jq -n \
+            --arg text "🚀 PROD Deployment Successful ✅ | Repo: ${{ github.repository }} | Commit: ${COMMIT_MESSAGE}" \
+            '{text: $text}')
+          curl --fail-with-body -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H "Content-type: application/json" \
+            -d "$payload"
 
       - name: Slack Failure (Prod)
         if: failure()

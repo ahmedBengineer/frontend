@@ -3549,7 +3549,7 @@ function AdditionalSettingsTab({ agentId }: { agentId: string }) {
 }
 
 export default function AgentSettingsPage() {
-  const [selectedAgent, setSelectedAgent] = useState(null)
+  const [selectedAgent, setSelectedAgent] = useState<any>(null)
   const [activeTab, setActiveTab] = useState("voiceprint")
 
   const handleSelectAgent = (agent: any) => {
@@ -3566,7 +3566,7 @@ export default function AgentSettingsPage() {
 
     switch (activeTab) {
       case "voiceprint":
-        return <VoiceprintTab />
+        return <VoiceprintTab agentId={selectedAgent.id} />
       case "voice-prompts":
         return <VoicePromptsTab agentId={selectedAgent.id} />
       case "agent-prompts":
@@ -3584,7 +3584,7 @@ export default function AgentSettingsPage() {
       case "additional-settings":
         return <AdditionalSettingsTab agentId={selectedAgent.id} />
       default:
-        return <VoiceprintTab />
+        return <VoiceprintTab agentId={selectedAgent.id} />
     }
   }
 

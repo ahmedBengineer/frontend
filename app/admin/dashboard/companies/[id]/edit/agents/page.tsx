@@ -233,7 +233,6 @@ export default function EditCompanyAgents() {
                     <Switch
                       checked={agent.status === "Active"}
                       onCheckedChange={() => handleToggleStatus(agent.id)}
-                      size="sm"
                     />
                     <span className="text-slate-600">{agent.status}</span>
                   </div>

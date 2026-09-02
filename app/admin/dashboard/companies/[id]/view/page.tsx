@@ -1,14 +1,15 @@
 "use client"
 
-import { useEffect } from "react"
+import { use, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
-export default function ViewCompanyRedirect({ params }: { params: { id: string } }) {
+export default function ViewCompanyRedirect({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
 
   useEffect(() => {
-    router.replace(`/admin/dashboard/companies/${params.id}/view/profile`)
-  }, [router, params.id])
+    router.replace(`/admin/dashboard/companies/${id}/view/profile`)
+  }, [router, id])
 
   return <div>Redirecting...</div>
 }

@@ -11,12 +11,10 @@
 
 # production
 /build
-.env
+
 # env files (never commit secrets)
-.env.development.local
-.env.test.local
-.env.production.local
-.env*.local
+.env*
+!.env.example
 
 # debug
 npm-debug.log*

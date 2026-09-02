@@ -6,7 +6,33 @@ import Cookies from "js-cookie"
 import { useToast } from "@/hooks/use-toast"
 import { ListPageSkeleton } from "@/components/page-skeletons"
 
-const Button = ({ children, onClick, disabled, className = "", size = "default" }) => (
+type ActionLog = {
+  id: number
+  action: "create" | "update" | "delete" | string
+  content_type: string
+  user: string
+  object_id: string | number
+  description: string
+  timestamp: string
+  changes?: Record<string, { old: unknown; new: unknown }>
+  highlight_changes?: Record<string, { highlight: boolean; old?: unknown; new?: unknown }>
+}
+
+type DiffLine = { type: "same" | "add" | "remove"; line: string }
+
+const Button = ({
+  children,
+  onClick,
+  disabled,
+  className = "",
+  size = "default",
+}: {
+  children: React.ReactNode
+  onClick: () => void
+  disabled?: boolean
+  className?: string
+  size?: string
+}) => (
   <button
     onClick={onClick}
     disabled={disabled}
@@ -18,14 +44,14 @@ const Button = ({ children, onClick, disabled, className = "", size = "default" 
   </button>
 )
 
-const Badge = ({ children, className = "" }) => (
+const Badge = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
     {children}
   </span>
 )
 
-function diffLines(oldStr, newStr) {
-  const toString = (v) => {
+function diffLines(oldStr: unknown, newStr: unknown): DiffLine[] {
+  const toString = (v: unknown): string => {
     if (v === null || v === undefined) return ''
     if (typeof v === 'string') return v
     return JSON.stringify(v, null, 2)
@@ -38,7 +64,7 @@ function diffLines(oldStr, newStr) {
     for (let j = 1; j <= n; j++)
       if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1
       else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1])
-  const result = []
+  const result: DiffLine[] = []
   let i = m, j = n
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) { result.unshift({ type: 'same', line: a[i - 1] }); i--; j-- }
@@ -48,10 +74,20 @@ function diffLines(oldStr, newStr) {
   return result
 }
 
-const LogDetailModal = ({ log, onClose, onRevert, revertingId }) => {
+const LogDetailModal = ({
+  log,
+  onClose,
+  onRevert,
+  revertingId,
+}: {
+  log: ActionLog | null
+  onClose: () => void
+  onRevert: (id: number) => void
+  revertingId: number | null
+}) => {
   if (!log) return null
 
-  const getActionIcon = (action) => {
+  const getActionIcon = (action: string) => {
     switch (action) {
       case "create": return <Plus className="w-5 h-5" />
       case "update": return <Edit className="w-5 h-5" />
@@ -60,7 +96,7 @@ const LogDetailModal = ({ log, onClose, onRevert, revertingId }) => {
     }
   }
 
-  const getActionGradient = (action) => {
+  const getActionGradient = (action: string) => {
     switch (action) {
       case "create": return "from-emerald-500 to-emerald-600"
       case "update": return "from-blue-500 to-blue-600"
@@ -69,7 +105,7 @@ const LogDetailModal = ({ log, onClose, onRevert, revertingId }) => {
     }
   }
 
-  const formatValue = (value) => {
+  const formatValue = (value: unknown) => {
     if (value === null || value === undefined) return "null"
     if (Array.isArray(value)) {
       if (value.length === 0) return "[ ]"
@@ -80,7 +116,7 @@ const LogDetailModal = ({ log, onClose, onRevert, revertingId }) => {
     return String(value)
   }
 
-  const highlightDifferences = (oldVal, newVal) => {
+  const highlightDifferences = (oldVal: unknown, newVal: unknown) => {
     const oldStr = JSON.stringify(oldVal)
     const newStr = JSON.stringify(newVal)
     return { old: oldStr, new: newStr, hasDiff: oldStr !== newStr }
@@ -190,9 +226,8 @@ const LogDetailModal = ({ log, onClose, onRevert, revertingId }) => {
               <div className="space-y-4">
                 {Object.entries(log.changes).map(([field, change]) => {
                   const highlightInfo = log.highlight_changes?.[field]
-                  const useHighlight = highlightInfo?.highlight === true
 
-                  if (useHighlight) {
+                  if (highlightInfo?.highlight === true) {
                     const lines = diffLines(highlightInfo.old, highlightInfo.new)
                     return (
                       <div key={field} className="bg-gradient-to-r from-slate-50 to-white rounded-2xl p-6 border border-slate-200">
@@ -316,15 +351,15 @@ const LogDetailModal = ({ log, onClose, onRevert, revertingId }) => {
 }
 
 export default function ActionLogsPage() {
-  const [logs, setLogs] = useState([])
+  const [logs, setLogs] = useState<ActionLog[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedLog, setSelectedLog] = useState(null)
-  const [revertingId, setRevertingId] = useState(null)
+  const [selectedLog, setSelectedLog] = useState<ActionLog | null>(null)
+  const [revertingId, setRevertingId] = useState<number | null>(null)
   const { toast } = useToast()
   const logsPerPage = 15
 
-  const handleRevert = async (id) => {
+  const handleRevert = async (id: number) => {
     setRevertingId(id)
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/reports/action-logs/${id}/revert/`, {
@@ -339,7 +374,8 @@ export default function ActionLogsPage() {
       toast({ title: "Changes reverted", description: "The action has been successfully reverted." })
       setSelectedLog(null)
     } catch (err) {
-      toast({ title: "Failed to revert", description: err.message || "Something went wrong.", variant: "destructive" })
+      const message = err instanceof Error ? err.message : "Something went wrong."
+      toast({ title: "Failed to revert", description: message, variant: "destructive" })
     } finally {
       setRevertingId(null)
     }
@@ -379,12 +415,12 @@ export default function ActionLogsPage() {
   const currentLogs = logs.slice(indexOfFirstLog, indexOfLastLog)
   const totalPages = Math.ceil(logs.length / logsPerPage)
 
-  const handlePageChange = (pageNumber) => {
+  const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const getActionColor = (action) => {
+  const getActionColor = (action: string) => {
     switch (action) {
       case "create": return "bg-emerald-50 text-emerald-700 border border-emerald-200"
       case "update": return "bg-blue-50 text-blue-700 border border-blue-200"
@@ -393,8 +429,8 @@ export default function ActionLogsPage() {
     }
   }
 
-  const getContentTypeColor = (type) => {
-    const colors = {
+  const getContentTypeColor = (type: string) => {
+    const colors: Record<string, string> = {
       user: "bg-purple-50 text-purple-700",
       agent: "bg-cyan-50 text-cyan-700",
       task: "bg-amber-50 text-amber-700",
