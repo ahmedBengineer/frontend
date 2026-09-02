@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-https://apii.pentagonai.co/api}
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
     image: pentagon-frontend:latest
     container_name: pentagon-frontend
     ports:
