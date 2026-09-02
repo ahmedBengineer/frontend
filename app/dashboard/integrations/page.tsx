@@ -628,7 +628,7 @@ export default function IntegrationsPage() {
             const meData = await meRes.json()
             const cid = typeof meData.company === "object" ? meData.company?.id : meData.company
             if (cid) {
-              const zapierRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company/companies/${cid}/`, {
+              const zapierRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/${cid}/`, {
                 headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
               })
               if (zapierRes.ok) {
@@ -950,7 +950,7 @@ export default function IntegrationsPage() {
         if (cid) {
           setZapierCompanyId(cid)
           try {
-            const companyRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company/companies/${cid}/`, { headers: authHeaders })
+            const companyRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/${cid}/`, { headers: authHeaders })
             if (companyRes.ok) {
               const companyData = await companyRes.json()
               if (companyData.zapier_secret) setZapierSecret(companyData.zapier_secret)
@@ -965,7 +965,7 @@ export default function IntegrationsPage() {
     setZapierGenerating(true)
     try {
       const token = Cookies.get("Token") || ""
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company/companies/generate_zapier_secret/`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/generate_zapier_secret/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
       })
@@ -1809,9 +1809,9 @@ const handleFacebookConnect = async (agentId: number) => {
                   <div className="space-y-2 pt-0.5">
                     <span className="block">Set the URL to:</span>
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-                      <code className="text-xs text-slate-700 font-mono break-all flex-1">https://apii.pentagonai.co/api/integrations/zapier/webhook/</code>
+                      <code className="text-xs text-slate-700 font-mono break-all flex-1">{`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/zapier/webhook/`}</code>
                       <button
-                        onClick={() => copyToClipboard("https://apii.pentagonai.co/api/integrations/zapier/webhook/", "url")}
+                        onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/zapier/webhook/`, "url")}
                         className="w-7 h-7 rounded-lg bg-white hover:bg-slate-200 border border-slate-200 flex items-center justify-center flex-shrink-0 transition-all"
                       >
                         {zapierCopiedField === "url" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-slate-400" />}
