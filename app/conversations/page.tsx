@@ -64,7 +64,32 @@ type TokenUsage = {
   cache_creation_tokens: number
   cache_read_tokens: number
   total_tokens: number
+  call_duration_seconds?: number
 }
+
+/**
+ * Duration of a call session.
+ *
+ * Prefers the authoritative `token.call_duration_seconds` the backend stores on
+ * the session's last message (client `conversation_complete` payload, later
+ * corrected to the FreePBX call window). Falls back to the span between the
+ * first and last message timestamps — ingestion already interpolates message
+ * timestamps across the real call window, so no artificial buffer is needed.
+ */
+const getSessionDurationMs = (msgs: Message[]) => {
+  if (!msgs || msgs.length === 0) return 0
+  const sorted = [...msgs].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  )
+  const authoritative = sorted
+    .map((m) => m.token?.call_duration_seconds)
+    .find((d) => typeof d === "number" && d > 0)
+  if (typeof authoritative === "number") return authoritative * 1000
+  const startedAtMs = new Date(sorted[0].timestamp).getTime()
+  const endedAtMs = new Date(sorted[sorted.length - 1].timestamp).getTime()
+  return Math.max(0, endedAtMs - startedAtMs)
+}
+
 
 type UnknownToken = Message["token"] | number | string | Record<string, unknown> | null | undefined
 
@@ -251,9 +276,7 @@ function CallsTab() {
         const phoneNumber = firstMsg.phonenumber || "Unknown"
         const callerNumber = firstMsg.caller_number || "N/A"
         const startedAt = firstMsg.timestamp
-        const callDuration = summaryMsg
-          ? Math.floor((new Date(summaryMsg.timestamp).getTime() - new Date(firstMsg.timestamp).getTime()) / 1000) + "s"
-          : "N/A"
+        const callDuration = formatDuration(getSessionDurationMs(sortedMsgs))
 
 
 
@@ -917,21 +940,9 @@ function CallsTab() {
                     const sortedMsgs = [...msgs].sort(
                       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
                     )
-                    const startedAt = new Date(sortedMsgs[0].timestamp)
-                    const startedAtMs = startedAt.getTime()
-
-
 
                     const summaryMsg = sortedMsgs.find((m) => m.type === "summary" || m.type === "conversation_complete")
-                    const endedAtMs = summaryMsg
-                      ? new Date(summaryMsg.timestamp).getTime() + 15000
-                      : new Date(sortedMsgs[sortedMsgs.length - 1].timestamp).getTime()
-
-
-
-
-
-                    const callDuration = formatDuration(endedAtMs - startedAtMs)
+                    const callDuration = formatDuration(getSessionDurationMs(sortedMsgs))
                     const tokenTotals = getSessionTokenTotals(msgs)
                     const totalTokens = toSafeNumber(tokenTotals.total_tokens)
                     const phoneNumber = msgs[0]?.phonenumber || "Unknown"

@@ -3908,11 +3908,28 @@ function RecentActivitySection() {
             )
             const first = chronological[0]
             const summaryMsg = chronological.find((m) => m.type === "summary")
-            const duration_sec = summaryMsg
-              ? Math.floor(
-                  (new Date(summaryMsg.timestamp).getTime() - new Date(first.timestamp).getTime()) / 1000
-                )
-              : null
+            // Authoritative duration: backend stores the corrected call duration
+            // in `token.call_duration_seconds` on the session's last message;
+            // fall back to the first→last message span (already interpolated
+            // across the real call window by ingestion).
+            const authoritativeDuration = chronological
+              .map((m: any) => m?.token?.call_duration_seconds)
+              .find((d: unknown) => typeof d === "number" && d > 0)
+            const spanSec = Math.max(
+              0,
+              Math.floor(
+                (new Date(chronological[chronological.length - 1].timestamp).getTime() -
+                  new Date(first.timestamp).getTime()) /
+                  1000
+              )
+            )
+            const duration_sec =
+              typeof authoritativeDuration === "number"
+                ? Math.round(authoritativeDuration)
+                : Number.isFinite(spanSec)
+                  ? spanSec
+                  : null
+
             return {
               session_id,
               caller_number: first.caller_number || "Unknown",
