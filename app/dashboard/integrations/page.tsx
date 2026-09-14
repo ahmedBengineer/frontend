@@ -492,6 +492,8 @@ export default function IntegrationsPage() {
 
   const [isShopifyModalOpen, setIsShopifyModalOpen] = useState(false)
   const [shopifyShop, setShopifyShop] = useState("")
+  const [shopifyApp, setShopifyApp] = useState("public")
+  const [shopifyConnectedApp, setShopifyConnectedApp] = useState<string | null>(null)
   const [shopifyConnecting, setShopifyConnecting] = useState(false)
   const [shopifyDisconnecting, setShopifyDisconnecting] = useState(false)
 
@@ -614,7 +616,12 @@ export default function IntegrationsPage() {
           })
           if (shopifyRes.ok) {
             const shopifyData = await shopifyRes.json()
-            if (shopifyData.connected === true) shopifyStatus = "Connected"
+            if (shopifyData.connected === true) {
+              shopifyStatus = "Connected"
+              setShopifyConnectedApp(shopifyData.app_key || "public")
+            } else {
+              setShopifyConnectedApp(null)
+            }
           }
         } catch { /* non-critical */ }
 
@@ -767,6 +774,7 @@ export default function IntegrationsPage() {
 
     if (integration.key === "shopify") {
       setShopifyShop("")
+      setShopifyApp("public")
       setIsShopifyModalOpen(true)
       return
     }
@@ -886,7 +894,7 @@ export default function IntegrationsPage() {
     try {
       const token = Cookies.get("Token") || ""
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/shopify/connect/?shop=${encodeURIComponent(shop)}`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/shopify/connect/?shop=${encodeURIComponent(shop)}&app=${encodeURIComponent(shopifyApp)}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
@@ -1299,6 +1307,9 @@ const handleFacebookConnect = async (agentId: number) => {
                           {integration.isShopify && (
                             <span className="text-xs text-slate-400 font-light">E-commerce Store</span>
                           )}
+                          {integration.isShopify && shopifyConnectedApp === "custom" && (
+                            <span className="text-xs text-[#8a3ffc] font-light">Custom app (smartconvo-custom)</span>
+                          )}
                           {integration.isZapier && (
                             <span className="text-xs text-slate-400 font-light">Trigger AI voice calls from any app</span>
                           )}
@@ -1375,7 +1386,7 @@ const handleFacebookConnect = async (agentId: number) => {
                         ) : (
                           <button
                             className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#96BF48] hover:bg-[#86ad3e] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#96BF48]/20"
-                            onClick={() => { setShopifyShop(""); setIsShopifyModalOpen(true) }}
+                            onClick={() => { setShopifyShop(""); setShopifyApp("public"); setShopifyConnectedApp(null); setIsShopifyModalOpen(true) }}
                           >
                             Connect
                             <ChevronRight className="w-3.5 h-3.5" />
@@ -1661,7 +1672,19 @@ const handleFacebookConnect = async (agentId: number) => {
             Enter your store name (the subdomain of your store URL). We&apos;ll open Shopify
             to approve the connection — read-only access to your store data.
           </p>
-          <div className="space-y-2 mt-2">
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="shopify-app" className="text-sm font-light text-slate-700">Shopify App</Label>
+              <select
+                id="shopify-app"
+                value={shopifyApp}
+                onChange={(e) => setShopifyApp(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-light focus:outline-none focus:ring-2 focus:ring-[#96BF48]/40"
+              >
+                <option value="public">Standard app (smartconvo)</option>
+                <option value="custom">Custom app (smartconvo-custom)</option>
+              </select>
+            </div>
             <Label htmlFor="shopify-shop" className="text-sm font-light text-slate-700">Store Name</Label>
             <div className="flex items-center gap-2">
               <Input

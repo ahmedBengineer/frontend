@@ -1,0 +1,63 @@
+
+C:\Users\AhmedKhawar\Desktop\Pentagon\frontend\app\admin\dashboard\companies\[id]\view\conversations\page.tsx
+  154:21  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  163:6   warning  React Hook useEffect has a missing dependency: 'searchTerm'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  167:43  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  268:72  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+
+C:\Users\AhmedKhawar\Desktop\Pentagon\frontend\app\conversations\page.tsx
+    7:10  warning  'Button' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+  151:10  warning  'numbersLoading' is assigned a value but never used                                                            @typescript-eslint/no-unused-vars
+  164:9   warning  'router' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  204:19  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  305:31  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  411:13  error    'nums' is never reassigned. Use 'const' instead                                                                prefer-const
+  543:77  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  545:49  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  548:54  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  564:21  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  577:6   warning  React Hook useEffect has a missing dependency: 'searchTerm'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  847:74  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  963:27  warning  'resConfidence' is assigned a value but never used                                                             @typescript-eslint/no-unused-vars
+  964:27  warning  'resReason' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+
+C:\Users\AhmedKhawar\Desktop\Pentagon\frontend\app\dashboard\conversations\page.tsx
+    5:10  warning  'Button' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+  102:10  warning  'numbersLoading' is assigned a value but never used                                                            @typescript-eslint/no-unused-vars
+  131:19  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  200:31  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  267:13  error    'nums' is never reassigned. Use 'const' instead                                                                prefer-const
+  343:21  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  352:6   warning  React Hook useEffect has a missing dependency: 'searchTerm'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  490:72  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+
+C:\Users\AhmedKhawar\Desktop\Pentagon\frontend\app\dashboard\page.tsx
+    12:246  warning  'FileText' is defined but never used                                                                                                   @typescript-eslint/no-unused-vars
+    12:262  warning  'ShieldAlert' is defined but never used                                                                                                @typescript-eslint/no-unused-vars
+    12:275  warning  'Trash2' is defined but never used                                                                                                     @typescript-eslint/no-unused-vars
+    13:10   warning  'useToast' is defined but never used                                                                                                   @typescript-eslint/no-unused-vars
+   292:7    warning  'HOSPITAL_SPREADSHEET_ID' is assigned a value but never used                                                                           @typescript-eslint/no-unused-vars
+   293:7    warning  'HOSPITAL_RANGE' is assigned a value but never used                                                                                    @typescript-eslint/no-unused-vars
+   361:20   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+   373:6    warning  React Hook useEffect has missing dependencies: 'daysInMonth', 'month', and 'year'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+   510:27   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+   516:86   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+   950:6    warning  React Hook useEffect has a missing dependency: 'authHeaders'. Either include it or remove the dependency array                         react-hooks/exhaustive-deps
+  2521:11   warning  'HMSOverviewStats' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+  2549:36   warning  'color' is defined but never used                                                                                                      @typescript-eslint/no-unused-vars
+  2844:10   warning  'LabsModal' is defined but never used                                                                                                  @typescript-eslint/no-unused-vars
+  2916:10   warning  'DoctorsModal' is defined but never used                                                                                               @typescript-eslint/no-unused-vars
+  2991:10   warning  'AppointmentsModal' is defined but never used                                                                                          @typescript-eslint/no-unused-vars
+  3053:10   warning  'HistoryModal' is defined but never used                                                                                               @typescript-eslint/no-unused-vars
+  3120:10   warning  'PharmacyModal' is defined but never used                                                                                              @typescript-eslint/no-unused-vars
+  3302:73   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  3325:78   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  3677:68   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                        react/no-unescaped-entities
+  3890:24   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  3890:79   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  3892:41   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  3916:24   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+
+✖ 51 problems (26 errors, 25 warnings)
+  2 errors and 0 warnings potentially fixable with the `--fix` option.
+
