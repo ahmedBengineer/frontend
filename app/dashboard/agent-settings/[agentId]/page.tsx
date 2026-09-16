@@ -2038,10 +2038,16 @@ function FAQTab({ agentId }: { agentId: string }) {
   const { toast } = useToast()
   const token = Cookies.get("Token") || ""
 
-  type FAQ = { id: number; question: string; answer: string; order: number; is_published: boolean }
+  type SubFAQ = { id?: number; question: string; answer: string; order: number; is_published: boolean }
+  type FAQ = {
+    id: number; question: string; answer: string; order: number; is_published: boolean
+    company_id: number; agent_id: number; parent: number | null
+    sub_faqs: SubFAQ[]; created_at: string; updated_at: string
+  }
 
   const [faqs, setFaqs] = useState<FAQ[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
 
   // Pagination
   const FAQS_PER_PAGE = 40
@@ -2069,12 +2075,18 @@ function FAQTab({ agentId }: { agentId: string }) {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [addQuestion, setAddQuestion] = useState("")
   const [addAnswer, setAddAnswer] = useState("")
+  const [addOrder, setAddOrder] = useState(0)
+  const [addIsPublished, setAddIsPublished] = useState(true)
+  const [addSubFaqs, setAddSubFaqs] = useState<SubFAQ[]>([])
   const [adding, setAdding] = useState(false)
 
   // Edit dialog
   const [editFaq, setEditFaq] = useState<FAQ | null>(null)
   const [editQuestion, setEditQuestion] = useState("")
   const [editAnswer, setEditAnswer] = useState("")
+  const [editOrder, setEditOrder] = useState(0)
+  const [editIsPublished, setEditIsPublished] = useState(true)
+  const [editSubFaqs, setEditSubFaqs] = useState<SubFAQ[]>([])
   const [editing, setEditing] = useState(false)
 
   // Delete dialog
@@ -2086,7 +2098,7 @@ function FAQTab({ agentId }: { agentId: string }) {
     try {
       setLoading(true)
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/faq/faqs/?agent_id=${agentId}`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/faq/faqs/?agent_id=${agentId}&parent=none`,
         { headers: { Authorization: `Token ${token}` } }
       )
       const data = await res.json()
@@ -2115,14 +2127,20 @@ function FAQTab({ agentId }: { agentId: string }) {
         body: JSON.stringify({
           question: addQuestion.trim(),
           answer: addAnswer.trim(),
-          order: 0,
-          is_published: true,
+          order: addOrder,
+          is_published: addIsPublished,
           agent_id: Number(agentId),
+          sub_faqs: addSubFaqs.filter(s => s.question.trim() && s.answer.trim()).map(s => ({
+            question: s.question.trim(),
+            answer: s.answer.trim(),
+            order: s.order,
+            is_published: s.is_published,
+          })),
         }),
       })
       if (!res.ok) throw new Error()
       toast({ title: "FAQ added", description: "New Q&A pair saved successfully." })
-      setAddQuestion(""); setAddAnswer(""); setShowAddDialog(false)
+      setAddQuestion(""); setAddAnswer(""); setAddOrder(0); setAddIsPublished(true); setAddSubFaqs([]); setShowAddDialog(false)
       fetchFAQs()
     } catch {
       toast({ title: "Error", description: "Failed to add FAQ. Please try again.", variant: "destructive" })
@@ -2132,7 +2150,14 @@ function FAQTab({ agentId }: { agentId: string }) {
   }
 
   // ── Edit ─────────────────────────────────────────────
-  const openEdit = (faq: FAQ) => { setEditFaq(faq); setEditQuestion(faq.question); setEditAnswer(faq.answer) }
+  const openEdit = (faq: FAQ) => {
+    setEditFaq(faq)
+    setEditQuestion(faq.question)
+    setEditAnswer(faq.answer)
+    setEditOrder(faq.order)
+    setEditIsPublished(faq.is_published)
+    setEditSubFaqs(faq.sub_faqs?.map(s => ({ ...s })) ?? [])
+  }
 
   const handleEdit = async () => {
     if (!editFaq) return
@@ -2145,7 +2170,18 @@ function FAQTab({ agentId }: { agentId: string }) {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/faq/faqs/${editFaq.id}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
-        body: JSON.stringify({ question: editQuestion.trim(), answer: editAnswer.trim() }),
+        body: JSON.stringify({
+          question: editQuestion.trim(),
+          answer: editAnswer.trim(),
+          order: editOrder,
+          is_published: editIsPublished,
+          sub_faqs: editSubFaqs.filter(s => s.question.trim() && s.answer.trim()).map(s => ({
+            question: s.question.trim(),
+            answer: s.answer.trim(),
+            order: s.order,
+            is_published: s.is_published,
+          })),
+        }),
       })
       if (!res.ok) throw new Error()
       toast({ title: "FAQ updated", description: "Changes saved successfully." })
@@ -2215,9 +2251,24 @@ function FAQTab({ agentId }: { agentId: string }) {
                 </div>
                 <div>
                   <p className="text-2xl font-light text-slate-900 leading-none">{faqs.length}</p>
-                  <p className="text-[11px] text-slate-400 uppercase tracking-widest mt-0.5">Total FAQs</p>
+                  <p className="text-[11px] text-slate-400 uppercase tracking-widest mt-0.5">FAQs</p>
                 </div>
               </div>
+              {faqs.some(f => f.sub_faqs && f.sub_faqs.length > 0) && (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                    <svg className="w-5 h-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-light text-slate-900 leading-none">
+                      {faqs.reduce((sum, f) => sum + (f.sub_faqs?.length ?? 0), 0)}
+                    </p>
+                    <p className="text-[11px] text-slate-400 uppercase tracking-widest mt-0.5">Sub-FAQs</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2259,49 +2310,104 @@ function FAQTab({ agentId }: { agentId: string }) {
           </div>
         ) : (
           <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden divide-y divide-slate-50">
-            {paginatedFaqs.map((faq, idx) => (
-              <div
-                key={faq.id}
-                className="group flex items-start gap-5 px-6 py-5 hover:bg-slate-50/60 transition-colors duration-150"
-              >
-                {/* Index badge */}
-                <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-slate-100 text-slate-500 text-xs font-medium flex items-center justify-center mt-0.5 group-hover:bg-slate-200 transition-colors">
-                  {(currentPage - 1) * FAQS_PER_PAGE + idx + 1}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0 pr-2">
-                  <p className="text-sm font-medium text-slate-900 leading-snug tracking-tight">{faq.question}</p>
-                  <p className="text-sm font-light text-slate-500 mt-1.5 leading-relaxed">{faq.answer}</p>
-                </div>
-
-                {/* Actions – reveal on hover */}
-                <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                  <button
-                    onClick={() => openEdit(faq)}
-                    className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white hover:shadow-sm transition-all"
-                    title="Edit"
+            {paginatedFaqs.map((faq, idx) => {
+              const subFaqs = faq.sub_faqs ?? []
+              const isExpanded = expandedFaq === faq.id
+              return (
+                <div key={faq.id}>
+                  <div
+                    className="group flex items-start gap-5 px-6 py-5 hover:bg-slate-50/60 transition-colors duration-150"
                   >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => setDeleteFaq(faq)}
-                    className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
-                    title="Delete"
-                  >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                      <path d="M10 11v6M14 11v6" />
-                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                    </svg>
-                  </button>
+                    {/* Index badge */}
+                    <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-slate-100 text-slate-500 text-xs font-medium flex items-center justify-center mt-0.5 group-hover:bg-slate-200 transition-colors">
+                      {(currentPage - 1) * FAQS_PER_PAGE + idx + 1}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-900 leading-snug tracking-tight">{faq.question}</p>
+                        {!faq.is_published && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200">
+                            Draft
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-light text-slate-500 mt-1.5 leading-relaxed line-clamp-2">{faq.answer}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-[11px] text-slate-400 font-light">Order: {faq.order}</span>
+                        {subFaqs.length > 0 && (
+                          <button
+                            onClick={() => setExpandedFaq(isExpanded ? null : faq.id)}
+                            className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700 font-light transition-colors"
+                          >
+                            <svg
+                              className={`w-3 h-3 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                            >
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                            {subFaqs.length} sub-FAQ{subFaqs.length !== 1 ? "s" : ""}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions – reveal on hover */}
+                    <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      <button
+                        onClick={() => openEdit(faq)}
+                        className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white hover:shadow-sm transition-all"
+                        title="Edit"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setDeleteFaq(faq)}
+                        className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                        title="Delete"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6M14 11v6" />
+                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sub-FAQs expanded */}
+                  {isExpanded && subFaqs.length > 0 && (
+                    <div className="bg-slate-50/80 border-t border-slate-100">
+                      {subFaqs.map((sub, subIdx) => (
+                        <div
+                          key={sub.id ?? subIdx}
+                          className="flex items-start gap-5 pl-20 pr-6 py-3 border-b border-slate-100 last:border-0"
+                        >
+                          <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-slate-200 text-slate-500 text-[10px] font-medium flex items-center justify-center mt-0.5">
+                            {subIdx + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-700 leading-snug">{sub.question}</p>
+                            <p className="text-xs font-light text-slate-400 mt-1 leading-relaxed">{sub.answer}</p>
+                            <div className="flex items-center gap-3 mt-1.5">
+                              <span className="text-[10px] text-slate-400 font-light">Order: {sub.order}</span>
+                              {!sub.is_published && (
+                                <span className="text-[10px] text-amber-500 font-light">Draft</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -2342,8 +2448,8 @@ function FAQTab({ agentId }: { agentId: string }) {
       </div>
 
       {/* ══ Add Dialog ══════════════════════════════════ */}
-      <Dialog open={showAddDialog} onOpenChange={(o) => { setShowAddDialog(o); if (!o) { setAddQuestion(""); setAddAnswer("") } }}>
-        <DialogContent className="max-w-lg rounded-3xl p-0 overflow-hidden border-slate-200">
+      <Dialog open={showAddDialog} onOpenChange={(o) => { setShowAddDialog(o); if (!o) { setAddQuestion(""); setAddAnswer(""); setAddOrder(0); setAddIsPublished(true); setAddSubFaqs([]) } }}>
+        <DialogContent className="max-w-lg rounded-3xl p-0 overflow-hidden border-slate-200 max-h-[85vh] overflow-y-auto">
           <div className="px-7 pt-7 pb-2">
             <DialogTitle className="text-xl font-extralight tracking-tight text-slate-900">New FAQ</DialogTitle>
             <DialogDescription className="text-sm font-light text-slate-400 mt-1">
@@ -2374,10 +2480,107 @@ function FAQTab({ agentId }: { agentId: string }) {
                 disabled={adding}
               />
             </div>
+            <div className="flex items-center gap-5">
+              <div className="space-y-2 flex-1">
+                <p className="text-[11px] uppercase tracking-widest text-slate-400 font-medium">Order</p>
+                <Input
+                  type="number"
+                  min={0}
+                  value={addOrder}
+                  onChange={(e) => setAddOrder(Number(e.target.value))}
+                  className="h-10 rounded-xl border-slate-200 text-sm font-light focus-visible:ring-slate-900/20"
+                  disabled={adding}
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-widest text-slate-400 font-medium">Published</p>
+                <div className="flex items-center gap-2 h-10">
+                  <Switch
+                    checked={addIsPublished}
+                    onCheckedChange={setAddIsPublished}
+                    disabled={adding}
+                  />
+                  <span className="text-sm text-slate-500 font-light">{addIsPublished ? "Yes" : "No"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-FAQs */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-widest text-slate-400 font-medium">Sub-FAQs (optional)</p>
+                <button
+                  type="button"
+                  onClick={() => setAddSubFaqs(prev => [...prev, { question: "", answer: "", order: 0, is_published: true }])}
+                  className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700 font-light transition-colors"
+                  disabled={adding}
+                >
+                  <Plus className="w-3 h-3" /> Add Sub-FAQ
+                </button>
+              </div>
+              {addSubFaqs.length > 0 && (
+                <p className="text-xs text-slate-400 font-light">
+                  Sub-FAQs are nested items (e.g. cost components). They appear under the parent in search results.
+                </p>
+              )}
+              {addSubFaqs.map((sub, idx) => (
+                <div key={idx} className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-500">Sub-FAQ {idx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAddSubFaqs(prev => prev.filter((_, i) => i !== idx))}
+                      className="p-1 rounded text-slate-400 hover:text-rose-500 transition-colors"
+                      disabled={adding}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                  <Input
+                    placeholder="Sub-question"
+                    value={sub.question}
+                    onChange={(e) => setAddSubFaqs(prev => prev.map((s, i) => i === idx ? { ...s, question: e.target.value } : s))}
+                    className="h-9 rounded-lg border-slate-200 text-xs font-light focus-visible:ring-slate-900/20"
+                    disabled={adding}
+                  />
+                  <Textarea
+                    placeholder="Sub-answer"
+                    value={sub.answer}
+                    onChange={(e) => setAddSubFaqs(prev => prev.map((s, i) => i === idx ? { ...s, answer: e.target.value } : s))}
+                    rows={2}
+                    className="rounded-lg border-slate-200 text-xs font-light resize-none focus-visible:ring-slate-900/20"
+                    disabled={adding}
+                  />
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[10px] text-slate-400 font-light">Order:</p>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={sub.order}
+                        onChange={(e) => setAddSubFaqs(prev => prev.map((s, i) => i === idx ? { ...s, order: Number(e.target.value) } : s))}
+                        className="w-16 h-7 rounded-lg border-slate-200 text-xs font-light focus-visible:ring-slate-900/20"
+                        disabled={adding}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Switch
+                        checked={sub.is_published}
+                        onCheckedChange={(checked) => setAddSubFaqs(prev => prev.map((s, i) => i === idx ? { ...s, is_published: checked } : s))}
+                        disabled={adding}
+                      />
+                      <span className="text-[10px] text-slate-400 font-light">Published</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="flex items-center justify-end gap-2 px-7 py-5 bg-slate-50 border-t border-slate-100">
             <button
-              onClick={() => { setShowAddDialog(false); setAddQuestion(""); setAddAnswer("") }}
+              onClick={() => { setShowAddDialog(false); setAddQuestion(""); setAddAnswer(""); setAddOrder(0); setAddIsPublished(true); setAddSubFaqs([]) }}
               disabled={adding}
               className="px-4 py-2 rounded-xl text-sm font-light text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-40"
             >
@@ -2397,11 +2600,11 @@ function FAQTab({ agentId }: { agentId: string }) {
 
       {/* ══ Edit Dialog ═════════════════════════════════ */}
       <Dialog open={!!editFaq} onOpenChange={(o) => { if (!o) setEditFaq(null) }}>
-        <DialogContent className="max-w-lg rounded-3xl p-0 overflow-hidden border-slate-200">
+        <DialogContent className="max-w-lg rounded-3xl p-0 overflow-hidden border-slate-200 max-h-[85vh] overflow-y-auto">
           <div className="px-7 pt-7 pb-2">
             <DialogTitle className="text-xl font-extralight tracking-tight text-slate-900">Edit FAQ</DialogTitle>
             <DialogDescription className="text-sm font-light text-slate-400 mt-1">
-              Update the question or answer below.
+              Update the question, answer, or sub-FAQs below.
             </DialogDescription>
           </div>
           <div className="px-7 py-5 space-y-5">
@@ -2423,6 +2626,103 @@ function FAQTab({ agentId }: { agentId: string }) {
                 className="rounded-xl border-slate-200 text-sm font-light resize-none focus-visible:ring-slate-900/20"
                 disabled={editing}
               />
+            </div>
+            <div className="flex items-center gap-5">
+              <div className="space-y-2 flex-1">
+                <p className="text-[11px] uppercase tracking-widest text-slate-400 font-medium">Order</p>
+                <Input
+                  type="number"
+                  min={0}
+                  value={editOrder}
+                  onChange={(e) => setEditOrder(Number(e.target.value))}
+                  className="h-10 rounded-xl border-slate-200 text-sm font-light focus-visible:ring-slate-900/20"
+                  disabled={editing}
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-widest text-slate-400 font-medium">Published</p>
+                <div className="flex items-center gap-2 h-10">
+                  <Switch
+                    checked={editIsPublished}
+                    onCheckedChange={setEditIsPublished}
+                    disabled={editing}
+                  />
+                  <span className="text-sm text-slate-500 font-light">{editIsPublished ? "Yes" : "No"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-FAQs */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-widest text-slate-400 font-medium">Sub-FAQs</p>
+                <button
+                  type="button"
+                  onClick={() => setEditSubFaqs(prev => [...prev, { question: "", answer: "", order: 0, is_published: true }])}
+                  className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700 font-light transition-colors"
+                  disabled={editing}
+                >
+                  <Plus className="w-3 h-3" /> Add Sub-FAQ
+                </button>
+              </div>
+              {editSubFaqs.length > 0 && (
+                <p className="text-xs text-slate-400 font-light">
+                  Sub-FAQs replace the full set when saved. Omitting them leaves existing sub-FAQs untouched.
+                </p>
+              )}
+              {editSubFaqs.map((sub, idx) => (
+                <div key={idx} className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-500">Sub-FAQ {idx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditSubFaqs(prev => prev.filter((_, i) => i !== idx))}
+                      className="p-1 rounded text-slate-400 hover:text-rose-500 transition-colors"
+                      disabled={editing}
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                  <Input
+                    placeholder="Sub-question"
+                    value={sub.question}
+                    onChange={(e) => setEditSubFaqs(prev => prev.map((s, i) => i === idx ? { ...s, question: e.target.value } : s))}
+                    className="h-9 rounded-lg border-slate-200 text-xs font-light focus-visible:ring-slate-900/20"
+                    disabled={editing}
+                  />
+                  <Textarea
+                    placeholder="Sub-answer"
+                    value={sub.answer}
+                    onChange={(e) => setEditSubFaqs(prev => prev.map((s, i) => i === idx ? { ...s, answer: e.target.value } : s))}
+                    rows={2}
+                    className="rounded-lg border-slate-200 text-xs font-light resize-none focus-visible:ring-slate-900/20"
+                    disabled={editing}
+                  />
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[10px] text-slate-400 font-light">Order:</p>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={sub.order}
+                        onChange={(e) => setEditSubFaqs(prev => prev.map((s, i) => i === idx ? { ...s, order: Number(e.target.value) } : s))}
+                        className="w-16 h-7 rounded-lg border-slate-200 text-xs font-light focus-visible:ring-slate-900/20"
+                        disabled={editing}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Switch
+                        checked={sub.is_published}
+                        onCheckedChange={(checked) => setEditSubFaqs(prev => prev.map((s, i) => i === idx ? { ...s, is_published: checked } : s))}
+                        disabled={editing}
+                      />
+                      <span className="text-[10px] text-slate-400 font-light">Published</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 px-7 py-5 bg-slate-50 border-t border-slate-100">
