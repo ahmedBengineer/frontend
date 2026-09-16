@@ -505,6 +505,8 @@ export default function IntegrationsPage() {
   const [zapierAgents, setZapierAgents] = useState<any[]>([])
   const [zapierAgentsLoading, setZapierAgentsLoading] = useState(false)
   const [zapierCopiedField, setZapierCopiedField] = useState<string | null>(null)
+  const [zapierVerified, setZapierVerified] = useState(false)
+  const [zapierLastEvent, setZapierLastEvent] = useState<any>(null)
 
 
 
@@ -625,26 +627,20 @@ export default function IntegrationsPage() {
           }
         } catch { /* non-critical */ }
 
-        // Fetch Zapier status
+        // Fetch Zapier status (webhook secret configured + whether a lead webhook has been received)
         let zapierStatus = "Not Connected"
         try {
-          const meRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/me/`, {
+          const zapierRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/zapier/status/`, {
             headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
           })
-          if (meRes.ok) {
-            const meData = await meRes.json()
-            const cid = typeof meData.company === "object" ? meData.company?.id : meData.company
-            if (cid) {
-              const zapierRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/${cid}/`, {
-                headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
-              })
-              if (zapierRes.ok) {
-                try {
-                  const zapierData = await zapierRes.json()
-                  if (zapierData.zapier_secret) zapierStatus = "Connected"
-                } catch { /* non-JSON */ }
-              }
-            }
+          if (zapierRes.ok) {
+            const zapierStatusData = await zapierRes.json()
+            // The backend reports the secret as configured whether it's the per-company
+            // `zapier_secret` or the global `ZAPIER_SECRET` env var, so the card reflects
+            // setup correctly even before the first call is verified.
+            if (zapierStatusData.secret_configured === true) zapierStatus = "Connected"
+            setZapierVerified(zapierStatusData.connected === true)
+            setZapierLastEvent(zapierStatusData.last_event)
           }
         } catch { /* non-critical */ }
 
@@ -935,9 +931,21 @@ export default function IntegrationsPage() {
     setZapierSecret("")
     setZapierSecretVisible(false)
     setZapierCompanyId(null)
+    setZapierVerified(false)
+    setZapierLastEvent(null)
 
     const token = Cookies.get("Token") || ""
     const authHeaders = { "Content-Type": "application/json", Authorization: `Token ${token}` }
+
+    // Refresh connection/verification status from the backend.
+    try {
+      const zapRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/zapier/status/`, { headers: authHeaders })
+      if (zapRes.ok) {
+        const zapStatus = await zapRes.json()
+        setZapierVerified(zapStatus.connected === true)
+        setZapierLastEvent(zapStatus.last_event)
+      }
+    } catch { /* non-critical */ }
 
     try {
       setZapierAgentsLoading(true)
@@ -1729,6 +1737,33 @@ const handleFacebookConnect = async (agentId: number) => {
           </DialogHeader>
 
           <div className="space-y-8 mt-4">
+            {/* Connection status */}
+            <div className={`flex items-start gap-2 rounded-xl px-4 py-3 ${zapierVerified ? "bg-green-50 border border-green-200" : "bg-amber-50 border border-amber-200"}`}>
+              {zapierVerified ? (
+                <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              )}
+              <div className="text-xs font-light leading-relaxed">
+                {zapierVerified ? (
+                  <span className="text-green-700">
+                    <strong className="font-medium">Connected</strong> — SmartConvo is receiving Zapier lead webhooks
+                    {zapierLastEvent?.created_at ? `(last received ${new Date(zapierLastEvent.created_at).toLocaleString()})` : ""}.
+                  </span>
+                ) : zapierSecret ? (
+                  <span className="text-amber-700">
+                    <strong className="font-medium">Secret configured</strong>, but no lead webhook received yet. In your Zap, add a
+                    <strong>Webhooks by Zapier &rarr; Webhook</strong> <em>action</em> (not the Catch&nbsp;Hook trigger) pointed at the URL below,
+                    then click <strong>Test</strong> to POST a lead. The card flips to <strong>Connected</strong> once a call is received.
+                  </span>
+                ) : (
+                  <span className="text-orange-700">
+                    <strong className="font-medium">Not connected yet.</strong> Generate a secret below, then follow the setup steps.
+                  </span>
+                )}
+              </div>
+            </div>
+
             {/* Section A: Zapier Secret */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-slate-900">Your Zapier Secret</h3>
