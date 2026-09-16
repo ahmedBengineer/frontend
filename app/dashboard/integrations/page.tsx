@@ -492,6 +492,8 @@ export default function IntegrationsPage() {
 
   const [isShopifyModalOpen, setIsShopifyModalOpen] = useState(false)
   const [shopifyShop, setShopifyShop] = useState("")
+  const [shopifyApp, setShopifyApp] = useState("public")
+  const [shopifyConnectedApp, setShopifyConnectedApp] = useState<string | null>(null)
   const [shopifyConnecting, setShopifyConnecting] = useState(false)
   const [shopifyDisconnecting, setShopifyDisconnecting] = useState(false)
 
@@ -503,6 +505,8 @@ export default function IntegrationsPage() {
   const [zapierAgents, setZapierAgents] = useState<any[]>([])
   const [zapierAgentsLoading, setZapierAgentsLoading] = useState(false)
   const [zapierCopiedField, setZapierCopiedField] = useState<string | null>(null)
+  const [zapierVerified, setZapierVerified] = useState(false)
+  const [zapierLastEvent, setZapierLastEvent] = useState<any>(null)
 
 
 
@@ -614,30 +618,29 @@ export default function IntegrationsPage() {
           })
           if (shopifyRes.ok) {
             const shopifyData = await shopifyRes.json()
-            if (shopifyData.connected === true) shopifyStatus = "Connected"
+            if (shopifyData.connected === true) {
+              shopifyStatus = "Connected"
+              setShopifyConnectedApp(shopifyData.app_key || "public")
+            } else {
+              setShopifyConnectedApp(null)
+            }
           }
         } catch { /* non-critical */ }
 
-        // Fetch Zapier status
+        // Fetch Zapier status (webhook secret configured + whether a lead webhook has been received)
         let zapierStatus = "Not Connected"
         try {
-          const meRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/company-users/me/`, {
+          const zapierRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/zapier/status/`, {
             headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
           })
-          if (meRes.ok) {
-            const meData = await meRes.json()
-            const cid = typeof meData.company === "object" ? meData.company?.id : meData.company
-            if (cid) {
-              const zapierRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/companies/${cid}/`, {
-                headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
-              })
-              if (zapierRes.ok) {
-                try {
-                  const zapierData = await zapierRes.json()
-                  if (zapierData.zapier_secret) zapierStatus = "Connected"
-                } catch { /* non-JSON */ }
-              }
-            }
+          if (zapierRes.ok) {
+            const zapierStatusData = await zapierRes.json()
+            // The backend reports the secret as configured whether it's the per-company
+            // `zapier_secret` or the global `ZAPIER_SECRET` env var, so the card reflects
+            // setup correctly even before the first call is verified.
+            if (zapierStatusData.secret_configured === true) zapierStatus = "Connected"
+            setZapierVerified(zapierStatusData.connected === true)
+            setZapierLastEvent(zapierStatusData.last_event)
           }
         } catch { /* non-critical */ }
 
@@ -767,6 +770,7 @@ export default function IntegrationsPage() {
 
     if (integration.key === "shopify") {
       setShopifyShop("")
+      setShopifyApp("public")
       setIsShopifyModalOpen(true)
       return
     }
@@ -886,7 +890,7 @@ export default function IntegrationsPage() {
     try {
       const token = Cookies.get("Token") || ""
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/shopify/connect/?shop=${encodeURIComponent(shop)}`,
+        `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/shopify/connect/?shop=${encodeURIComponent(shop)}&app=${encodeURIComponent(shopifyApp)}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
@@ -927,9 +931,21 @@ export default function IntegrationsPage() {
     setZapierSecret("")
     setZapierSecretVisible(false)
     setZapierCompanyId(null)
+    setZapierVerified(false)
+    setZapierLastEvent(null)
 
     const token = Cookies.get("Token") || ""
     const authHeaders = { "Content-Type": "application/json", Authorization: `Token ${token}` }
+
+    // Refresh connection/verification status from the backend.
+    try {
+      const zapRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/zapier/status/`, { headers: authHeaders })
+      if (zapRes.ok) {
+        const zapStatus = await zapRes.json()
+        setZapierVerified(zapStatus.connected === true)
+        setZapierLastEvent(zapStatus.last_event)
+      }
+    } catch { /* non-critical */ }
 
     try {
       setZapierAgentsLoading(true)
@@ -1299,6 +1315,9 @@ const handleFacebookConnect = async (agentId: number) => {
                           {integration.isShopify && (
                             <span className="text-xs text-slate-400 font-light">E-commerce Store</span>
                           )}
+                          {integration.isShopify && shopifyConnectedApp === "custom" && (
+                            <span className="text-xs text-[#8a3ffc] font-light">Custom app (smartconvo-custom)</span>
+                          )}
                           {integration.isZapier && (
                             <span className="text-xs text-slate-400 font-light">Trigger AI voice calls from any app</span>
                           )}
@@ -1375,7 +1394,7 @@ const handleFacebookConnect = async (agentId: number) => {
                         ) : (
                           <button
                             className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#96BF48] hover:bg-[#86ad3e] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#96BF48]/20"
-                            onClick={() => { setShopifyShop(""); setIsShopifyModalOpen(true) }}
+                            onClick={() => { setShopifyShop(""); setShopifyApp("public"); setShopifyConnectedApp(null); setIsShopifyModalOpen(true) }}
                           >
                             Connect
                             <ChevronRight className="w-3.5 h-3.5" />
@@ -1661,7 +1680,19 @@ const handleFacebookConnect = async (agentId: number) => {
             Enter your store name (the subdomain of your store URL). We&apos;ll open Shopify
             to approve the connection — read-only access to your store data.
           </p>
-          <div className="space-y-2 mt-2">
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="shopify-app" className="text-sm font-light text-slate-700">Shopify App</Label>
+              <select
+                id="shopify-app"
+                value={shopifyApp}
+                onChange={(e) => setShopifyApp(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-light focus:outline-none focus:ring-2 focus:ring-[#96BF48]/40"
+              >
+                <option value="public">Standard app (smartconvo)</option>
+                <option value="custom">Custom app (smartconvo-custom)</option>
+              </select>
+            </div>
             <Label htmlFor="shopify-shop" className="text-sm font-light text-slate-700">Store Name</Label>
             <div className="flex items-center gap-2">
               <Input
@@ -1706,6 +1737,33 @@ const handleFacebookConnect = async (agentId: number) => {
           </DialogHeader>
 
           <div className="space-y-8 mt-4">
+            {/* Connection status */}
+            <div className={`flex items-start gap-2 rounded-xl px-4 py-3 ${zapierVerified ? "bg-green-50 border border-green-200" : "bg-amber-50 border border-amber-200"}`}>
+              {zapierVerified ? (
+                <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              )}
+              <div className="text-xs font-light leading-relaxed">
+                {zapierVerified ? (
+                  <span className="text-green-700">
+                    <strong className="font-medium">Connected</strong> — SmartConvo is receiving Zapier lead webhooks
+                    {zapierLastEvent?.created_at ? `(last received ${new Date(zapierLastEvent.created_at).toLocaleString()})` : ""}.
+                  </span>
+                ) : zapierSecret ? (
+                  <span className="text-amber-700">
+                    <strong className="font-medium">Secret configured</strong>, but no lead webhook received yet. In your Zap, add a
+                    <strong>Webhooks by Zapier &rarr; Webhook</strong> <em>action</em> (not the Catch&nbsp;Hook trigger) pointed at the URL below,
+                    then click <strong>Test</strong> to POST a lead. The card flips to <strong>Connected</strong> once a call is received.
+                  </span>
+                ) : (
+                  <span className="text-orange-700">
+                    <strong className="font-medium">Not connected yet.</strong> Generate a secret below, then follow the setup steps.
+                  </span>
+                )}
+              </div>
+            </div>
+
             {/* Section A: Zapier Secret */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-slate-900">Your Zapier Secret</h3>
