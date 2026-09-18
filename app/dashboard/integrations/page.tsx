@@ -404,6 +404,14 @@ function IntegrationLogo({ integration }: { integration: any }) {
       bg: "bg-[#FF4A00]/10", hover: "group-hover:bg-[#FF4A00]/20",
       icon: <Zap className="w-5 h-5 text-[#FF4A00]" />,
     },
+    postex: {
+      bg: "bg-[#E31E24]/10", hover: "group-hover:bg-[#E31E24]/20",
+      icon: (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#E31E24]">
+          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/>
+        </svg>
+      ),
+    },
   }
 
   const cfg = logos[integration.key]
@@ -469,6 +477,13 @@ export default function IntegrationsPage() {
       statusColor: "text-orange-600",
       isZapier: true,
     },
+    {
+      key: "postex",
+      name: "PostEx",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+      isPostEx: true,
+    },
   ])
 
 
@@ -507,6 +522,13 @@ export default function IntegrationsPage() {
   const [zapierCopiedField, setZapierCopiedField] = useState<string | null>(null)
   const [zapierVerified, setZapierVerified] = useState(false)
   const [zapierLastEvent, setZapierLastEvent] = useState<any>(null)
+
+  const [isPostExModalOpen, setIsPostExModalOpen] = useState(false)
+  const [postexToken, setPostexToken] = useState("")
+  const [postexStoreCode, setPostexStoreCode] = useState("01")
+  const [postexCity, setPostexCity] = useState("Lahore")
+  const [postexConnecting, setPostexConnecting] = useState(false)
+  const [postexDisconnecting, setPostexDisconnecting] = useState(false)
 
 
 
@@ -644,6 +666,18 @@ export default function IntegrationsPage() {
           }
         } catch { /* non-critical */ }
 
+        // Fetch PostEx status
+        let postexStatus = "Not Connected"
+        try {
+          const postexRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/postex/status/`, {
+            headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
+          })
+          if (postexRes.ok) {
+            const postexData = await postexRes.json()
+            if (postexData.connected === true) postexStatus = "Connected"
+          }
+        } catch { /* non-critical */ }
+
         setIntegrations((prev) =>
   prev.map((integration) => {
     if (integration.key === "kitchenhub") {
@@ -682,6 +716,13 @@ export default function IntegrationsPage() {
         ...integration,
         status: zapierStatus,
         statusColor: zapierStatus === "Connected" ? "text-green-600" : "text-orange-600",
+      }
+    }
+    if (integration.key === "postex") {
+      return {
+        ...integration,
+        status: postexStatus,
+        statusColor: postexStatus === "Connected" ? "text-green-600" : "text-orange-600",
       }
     }
     return {
@@ -777,6 +818,14 @@ export default function IntegrationsPage() {
 
     if (integration.key === "zapier") {
       openZapierModal()
+      return
+    }
+
+    if (integration.key === "postex") {
+      setPostexToken("")
+      setPostexStoreCode("01")
+      setPostexCity("Lahore")
+      setIsPostExModalOpen(true)
       return
     }
 
@@ -877,6 +926,58 @@ export default function IntegrationsPage() {
       toast({ description: err.message || "Error disconnecting HMS.", variant: "destructive" })
     } finally {
       setHmsDisconnecting(false)
+    }
+  }
+
+  const handlePostExConnect = async () => {
+    if (!postexToken.trim()) {
+      toast({ description: "Please enter your PostEx API token.", variant: "destructive" })
+      return
+    }
+    setPostexConnecting(true)
+    try {
+      const token = Cookies.get("Token") || ""
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/postex/connect/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
+        body: JSON.stringify({
+          token: postexToken.trim(),
+          default_store_code: postexStoreCode.trim() || "01",
+          default_city: postexCity.trim() || "Lahore",
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || data?.detail || "Failed to connect PostEx.")
+      setIntegrations((prev) =>
+        prev.map((i) => i.key === "postex" ? { ...i, status: "Connected", statusColor: "text-green-600" } : i)
+      )
+      toast({ description: "PostEx connected successfully!" })
+      setIsPostExModalOpen(false)
+      setPostexToken("")
+    } catch (err: any) {
+      toast({ description: err.message || "Error connecting PostEx.", variant: "destructive" })
+    } finally {
+      setPostexConnecting(false)
+    }
+  }
+
+  const handlePostExDisconnect = async () => {
+    setPostexDisconnecting(true)
+    try {
+      const token = Cookies.get("Token") || ""
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/postex/disconnect/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
+      })
+      if (!res.ok) throw new Error("Failed to disconnect PostEx.")
+      setIntegrations((prev) =>
+        prev.map((i) => i.key === "postex" ? { ...i, status: "Not Connected", statusColor: "text-orange-600" } : i)
+      )
+      toast({ description: "PostEx disconnected." })
+    } catch (err: any) {
+      toast({ description: err.message || "Error disconnecting PostEx.", variant: "destructive" })
+    } finally {
+      setPostexDisconnecting(false)
     }
   }
 
@@ -1321,6 +1422,9 @@ const handleFacebookConnect = async (agentId: number) => {
                           {integration.isZapier && (
                             <span className="text-xs text-slate-400 font-light">Trigger AI voice calls from any app</span>
                           )}
+                          {integration.isPostEx && (
+                            <span className="text-xs text-slate-400 font-light">COD / Returns / Shipping</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1415,6 +1519,24 @@ const handleFacebookConnect = async (agentId: number) => {
                             onClick={() => openZapierModal()}
                           >
                             Connect Zapier
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )
+                      ) : integration.isPostEx ? (
+                        integration.status === "Connected" ? (
+                          <button
+                            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 text-sm font-light disabled:opacity-60"
+                            onClick={handlePostExDisconnect}
+                            disabled={postexDisconnecting}
+                          >
+                            {postexDisconnecting ? "Disconnecting..." : "Disconnect"}
+                          </button>
+                        ) : (
+                          <button
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#E31E24] hover:bg-[#c41a1f] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#E31E24]/20"
+                            onClick={() => { setPostexToken(""); setPostexStoreCode("01"); setPostexCity("Lahore"); setIsPostExModalOpen(true) }}
+                          >
+                            Connect
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         )
@@ -1665,6 +1787,69 @@ const handleFacebookConnect = async (agentId: number) => {
               disabled={hmsConnecting}
             >
               {hmsConnecting ? "Connecting..." : "Connect"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* PostEx Modal */}
+      <Dialog open={isPostExModalOpen} onOpenChange={setIsPostExModalOpen}>
+        <DialogContent className="rounded-2xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-light text-slate-900">Connect PostEx</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-500 font-light">
+            Enter your PostEx partner API token (base64-encoded). You can find it in your PostEx merchant dashboard under
+            <span className="font-medium text-slate-700"> API Settings</span>.
+          </p>
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="postex-token" className="text-sm font-light text-slate-700">API Token</Label>
+              <Input
+                id="postex-token"
+                value={postexToken}
+                onChange={(e) => setPostexToken(e.target.value)}
+                placeholder="Base64-encoded token..."
+                className="rounded-xl border-slate-200 font-mono text-sm"
+                onKeyDown={(e) => e.key === "Enter" && handlePostExConnect()}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="postex-store" className="text-sm font-light text-slate-700">Store Code</Label>
+                <Input
+                  id="postex-store"
+                  value={postexStoreCode}
+                  onChange={(e) => setPostexStoreCode(e.target.value)}
+                  placeholder="01"
+                  className="rounded-xl border-slate-200 font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="postex-city" className="text-sm font-light text-slate-700">Default City</Label>
+                <Input
+                  id="postex-city"
+                  value={postexCity}
+                  onChange={(e) => setPostexCity(e.target.value)}
+                  placeholder="Lahore"
+                  className="rounded-xl border-slate-200 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 mt-2">
+            <button
+              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-all duration-200 text-sm font-light"
+              onClick={() => setIsPostExModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 bg-[#E31E24] hover:bg-[#c41a1f] text-white rounded-xl transition-all duration-200 text-sm font-light disabled:opacity-60"
+              onClick={handlePostExConnect}
+              disabled={postexConnecting}
+            >
+              {postexConnecting ? "Connecting..." : "Connect"}
             </button>
           </DialogFooter>
         </DialogContent>
