@@ -13,7 +13,6 @@
 /build
 
 # env files (never commit secrets)
-.env*
 !.env.example
 
 # debug
@@ -43,7 +42,6 @@ storybook-static
 
 # IDE / editor
 .idea
-.vscode/
 
 # OS
 .DS_Store
