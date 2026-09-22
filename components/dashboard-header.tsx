@@ -196,8 +196,9 @@ export function DashboardHeader() {
         const data = await res.json()
 
 
-        if (Array.isArray(data)) {
-          const primaryAgent = data.find((agent) => agent.primary === true)
+        const agentList = Array.isArray(data) ? data : data?.results ?? []
+        if (agentList.length) {
+          const primaryAgent = agentList.find((agent: any) => agent.primary === true)
           if (primaryAgent) setPrimaryAgentName(primaryAgent.name)
         }
       } catch (err: any) {
@@ -231,7 +232,8 @@ export function DashboardHeader() {
 
 
         // Sort by timestamp (latest first) and take top 5
-        const sortedLogs = [...data].sort(
+        const list = Array.isArray(data) ? data : data?.results ?? []
+        const sortedLogs = [...list].sort(
           (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         )
         setLogs(sortedLogs.slice(0, 5))

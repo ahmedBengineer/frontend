@@ -956,7 +956,8 @@ function FoodOrdersSection() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/reports/order-locations/`, { headers: authHeaders })
       const data = await res.json()
-      if (Array.isArray(data)) setCurrentRecords(data)
+      const list = Array.isArray(data) ? data : data?.results ?? []
+      setCurrentRecords(list)
     } catch {} finally { setLoadingCurrentRec(false) }
   }
 
@@ -1593,7 +1594,8 @@ function MunicipalContactsSection() {
         }
       )
       const data = await res.json()
-      if (Array.isArray(data)) setContactRecords(data)
+      const list = Array.isArray(data) ? data : data?.results ?? []
+      setContactRecords(list)
     } catch (err) {
       console.error("Error fetching contact records:", err)
     } finally {

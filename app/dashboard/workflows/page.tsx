@@ -86,7 +86,7 @@ export default function WorkflowsPage() {
         )
         if (!res.ok) throw new Error("Failed to fetch tools")
         const data = await res.json()
-        setTools(Array.isArray(data) ? data : [])
+        setTools(Array.isArray(data) ? data : data?.results ?? [])
       } catch (error) {
         console.error("Error fetching tools:", error)
         toast({

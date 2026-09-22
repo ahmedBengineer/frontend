@@ -99,7 +99,8 @@ export function MetricsGrid() {
           }
         )
         const data = await res.json()
-        if (Array.isArray(data)) setAllTransfers(data)
+        const list = Array.isArray(data) ? data : data?.results ?? []
+        if (list.length) setAllTransfers(list)
       } catch (err) {
         console.error("Error fetching transfers:", err)
       }

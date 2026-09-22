@@ -586,7 +586,8 @@ export default function IntegrationsPage() {
       console.log("Fetched integrations:", data)
 
 
-        const connectedKeys = data
+        const list = Array.isArray(data) ? data : data?.results ?? []
+        const connectedKeys = list
           .filter((item: any) => item.status === "active")
           .map((item: any) => integrationKeyMap[item.crm_type.toLowerCase()] || item.crm_type.toLowerCase())
 
