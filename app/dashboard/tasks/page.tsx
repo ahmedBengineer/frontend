@@ -394,7 +394,7 @@ export default function ActionLogsPage() {
         if (!res.ok) throw new Error(`Error: ${res.status} ${res.statusText}`)
 
         const data = await res.json()
-        setLogs(data)
+        setLogs(Array.isArray(data) ? data : data?.results ?? [])
       } catch (error) {
         console.error("Error fetching logs:", error)
       } finally {

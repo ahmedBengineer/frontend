@@ -200,7 +200,7 @@ export default function InsightsPage() {
   const fetchEvents = async () => {
     try {
       setLoading(true)
-      const url = "https://apii.pentagonai.co/api/reports/events/"
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/reports/events/`
 
 
       const res = await fetch(url, {
@@ -213,7 +213,7 @@ export default function InsightsPage() {
 
       if (!res.ok) throw new Error("Failed to fetch events")
       const data = await res.json()
-      setAllEvents(Array.isArray(data) ? data : [])
+      setAllEvents(Array.isArray(data) ? data : data?.results ?? [])
     } catch (error) {
       console.error("Error fetching events:", error)
       toast({

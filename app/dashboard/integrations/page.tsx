@@ -1160,7 +1160,7 @@ const updateKitchenHubField = (id: number, field: string, value: any) => {
 const saveKitchenHubItem = async (item: any) => {
   try {
     const token = Cookies.get("Token") || ""
-    const res = await fetch(`https://apii.pentagonai.co/api/integrations/kitchenhub/kitchenhub_integrations/${item.id}/`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/kitchenhub/kitchenhub_integrations/${item.id}/`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

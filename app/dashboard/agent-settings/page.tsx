@@ -1263,7 +1263,7 @@ function FAQTab({ agentId }: { agentId: string }) {
         headers: { Authorization: `Token ${token}` }
       })
       const data = await res.json()
-      setDocs(data)
+      setDocs(Array.isArray(data) ? data : data?.results ?? [])
     } catch (error) {
       console.error("Failed to fetch documents:", error)
     } finally {

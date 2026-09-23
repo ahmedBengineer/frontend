@@ -456,7 +456,7 @@ export default function UploadDocumentsPage() {
         }
       })
       const data = await res.json()
-      setDocs(data)
+      setDocs(Array.isArray(data) ? data : data?.results ?? [])
 
       
     } catch (error) {
