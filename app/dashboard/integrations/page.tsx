@@ -310,7 +310,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Link2, CheckCircle2, XCircle, Loader2, MapPin, ChevronRight, Eye, EyeOff, Copy, Check, AlertTriangle, Zap } from "lucide-react"
+import { Link2, CheckCircle2, XCircle, Loader2, MapPin, ChevronRight, Eye, EyeOff, Copy, Check, AlertTriangle, Zap, RefreshCw, Clock } from "lucide-react"
 
 const integrationKeyMap: Record<string, string> = {
   "leadconnector (ghl) v2 - standard": "ghl-standard",
@@ -342,6 +342,11 @@ const INTEGRATION_CHECK_KEYS = [
   "ginkoretail",
   "gtech",
 ]
+
+const CONNECT_BUTTON_STYLE = "inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-slate-900/20"
+const DISCONNECT_BUTTON_STYLE = "inline-flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:text-red-700 rounded-xl transition-all duration-200 text-sm font-light disabled:opacity-60 disabled:cursor-not-allowed"
+const RECONNECT_BUTTON_STYLE = "inline-flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:text-amber-800 rounded-xl transition-all duration-200 text-sm font-light"
+const LOCATION_BUTTON_STYLE = "inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-blue-600/20"
 
 function IntegrationLogo({ integration }: { integration: any }) {
   const logos: Record<string, { bg: string; hover: string; icon: React.ReactNode }> = {
@@ -451,13 +456,13 @@ function IntegrationLogo({ integration }: { integration: any }) {
   const cfg = logos[integration.key]
   if (!cfg) {
     return (
-      <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-all duration-200">
+      <div className="w-11 h-11 rounded-2xl bg-slate-100 ring-1 ring-black/5 group-hover:bg-slate-200 flex items-center justify-center transition-all duration-200">
         <Link2 className="w-5 h-5 text-slate-600" />
       </div>
     )
   }
   return (
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${cfg.bg} ${cfg.hover}`}>
+    <div className={`w-11 h-11 rounded-2xl ring-1 ring-black/5 flex items-center justify-center transition-all duration-200 ${cfg.bg} ${cfg.hover}`}>
       {cfg.icon}
     </div>
   )
@@ -468,7 +473,7 @@ function SkeletonRow() {
     <div className="px-8 py-6">
       <div className="grid grid-cols-12 gap-4 items-center">
         <div className="col-span-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 animate-pulse" />
+          <div className="w-11 h-11 rounded-2xl bg-slate-100 animate-pulse" />
           <div className="space-y-2">
             <div className="h-3 w-36 bg-slate-100 rounded animate-pulse" />
             <div className="h-2.5 w-24 bg-slate-100 rounded animate-pulse" />
@@ -487,8 +492,8 @@ function SkeletonRow() {
 
 function IntegrationsListSkeleton() {
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-      <div className="bg-gradient-to-r from-slate-50 to-white px-8 py-5 border-b border-slate-200">
+    <div className="bg-white rounded-3xl shadow-sm border border-slate-200/70 overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-50/80 to-white px-8 py-5 border-b border-slate-100">
         <div className="grid grid-cols-12 gap-4 text-xs font-medium text-slate-600 uppercase tracking-wider">
           <div className="col-span-4">Integration</div>
           <div className="col-span-3">Status</div>
@@ -504,7 +509,7 @@ function IntegrationsListSkeleton() {
 
 function IntegrationsPageSkeleton() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+    <div className="min-h-screen bg-slate-50">
       <div className="relative overflow-hidden bg-white border-b border-slate-200">
         <div className="absolute inset-0 bg-gradient-to-r from-slate-50/50 via-transparent to-slate-50/50" />
         <div className="relative max-w-7xl mx-auto px-8 py-16">
@@ -737,9 +742,6 @@ export default function IntegrationsPage() {
           facebook: false,
         }))
 
-        setIntegrationsLoading(false)
-
-
         // Fetch WhatsApp status separately
         let waStatus = "Not Connected"
         try {
@@ -940,6 +942,9 @@ export default function IntegrationsPage() {
 
 
     fetchIntegrations()
+
+    const releaseTimer = setTimeout(() => setIntegrationsLoading(false), 7000)
+    return () => clearTimeout(releaseTimer)
   }, [pathname])
 
 
@@ -1622,15 +1627,20 @@ const handleFacebookConnect = async (agentId: number) => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-white border-b border-slate-200">
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-50/50 via-transparent to-slate-50/50"></div>
-        
+      <div className="relative overflow-hidden bg-white border-b border-slate-100">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_45%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(148,163,184,0.10),transparent_40%)]"></div>
+        <div
+          className="absolute inset-0 opacity-[0.35] bg-[radial-gradient(rgba(100,116,139,0.35)_1px,transparent_1px)] bg-[length:22px_22px] [mask-image:radial-gradient(ellipse_at_top,black_0%,transparent_65%)]"
+        ></div>
+
         <div className="relative max-w-7xl mx-auto px-8 py-16">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-1 h-20 bg-gradient-to-b from-slate-900 via-slate-400 to-slate-200 rounded-full"></div>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-1 h-20 bg-gradient-to-b from-slate-900 via-slate-400 to-transparent rounded-full"></div>
             <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-light mb-3">Manage connections</p>
               <h1 className="text-5xl font-extralight tracking-tight text-slate-900 mb-2">
                 Integrations
               </h1>
@@ -1641,55 +1651,56 @@ const handleFacebookConnect = async (agentId: number) => {
           </div>
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12">
-            <div className="group bg-white border border-slate-200 rounded-2xl p-6 hover:shadow-lg hover:border-slate-300 transition-all duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-12">
+            <div className="group bg-white/70 backdrop-blur border border-slate-200/70 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-300">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center group-hover:bg-slate-900 group-hover:scale-110 transition-all duration-300">
+                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:bg-slate-900 group-hover:scale-110 transition-all duration-300">
                   <Link2 className="w-6 h-6 text-slate-600 group-hover:text-white transition-colors duration-300" />
                 </div>
+                <span className="text-[10px] text-slate-400 font-medium bg-slate-100/80 px-2.5 py-1 rounded-full uppercase tracking-wider">All</span>
               </div>
-              <p className="text-3xl font-light text-slate-900 mb-1">
-                {integrationsLoading ? <span className="inline-block h-8 w-12 bg-slate-100 rounded animate-pulse align-middle" /> : totalIntegrations}
+              <p className="text-4xl font-extralight text-slate-900 mb-1 tabular-nums">
+                {integrationsLoading ? <span className="inline-block h-9 w-12 bg-slate-100 rounded animate-pulse align-middle" /> : totalIntegrations}
               </p>
-              <p className="text-xs text-slate-500 uppercase tracking-wider font-light">Total Integrations</p>
+              <p className="text-[11px] text-slate-500 uppercase tracking-widest font-light">Total Integrations</p>
             </div>
 
-            <div className="group bg-white border border-green-200 rounded-2xl p-6 hover:shadow-lg hover:border-green-300 transition-all duration-300">
+            <div className="group bg-white/70 backdrop-blur border border-slate-200/70 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-0.5 hover:border-green-300 transition-all duration-300">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center group-hover:bg-green-500 group-hover:scale-110 transition-all duration-300">
+                <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center group-hover:bg-green-500 group-hover:scale-110 transition-all duration-300">
                   <CheckCircle2 className="w-6 h-6 text-green-600 group-hover:text-white transition-colors duration-300" />
                 </div>
                 {integrationsLoading ? (
-                  <div className="h-5 w-12 bg-slate-100 rounded-full animate-pulse" />
+                  <div className="h-6 w-12 bg-slate-100 rounded-full animate-pulse" />
                 ) : (
-                <div className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">
+                <div className="text-xs text-green-700 font-medium bg-green-50 border border-green-100 px-2.5 py-1 rounded-full tabular-nums">
                   {totalIntegrations > 0 ? Math.round((connectedCount / totalIntegrations) * 100) : 0}%
                 </div>
                 )}
               </div>
-              <p className="text-3xl font-light text-slate-900 mb-1">
-                {integrationsLoading ? <span className="inline-block h-8 w-12 bg-slate-100 rounded animate-pulse align-middle" /> : connectedCount}
+              <p className="text-4xl font-extralight text-slate-900 mb-1 tabular-nums">
+                {integrationsLoading ? <span className="inline-block h-9 w-12 bg-slate-100 rounded animate-pulse align-middle" /> : connectedCount}
               </p>
-              <p className="text-xs text-slate-500 uppercase tracking-wider font-light">Connected</p>
+              <p className="text-[11px] text-slate-500 uppercase tracking-widest font-light">Connected</p>
             </div>
 
-            <div className="group bg-white border border-orange-200 rounded-2xl p-6 hover:shadow-lg hover:border-orange-300 transition-all duration-300">
+            <div className="group bg-white/70 backdrop-blur border border-slate-200/70 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-0.5 hover:border-orange-300 transition-all duration-300">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center group-hover:bg-orange-500 group-hover:scale-110 transition-all duration-300">
+                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center group-hover:bg-orange-500 group-hover:scale-110 transition-all duration-300">
                   <XCircle className="w-6 h-6 text-orange-600 group-hover:text-white transition-colors duration-300" />
                 </div>
                 {integrationsLoading ? (
-                  <div className="h-5 w-12 bg-slate-100 rounded-full animate-pulse" />
+                  <div className="h-6 w-12 bg-slate-100 rounded-full animate-pulse" />
                 ) : (
-                <div className="text-xs text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded-full">
+                <div className="text-xs text-orange-700 font-medium bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-full tabular-nums">
                   {totalIntegrations > 0 ? Math.round(((totalIntegrations - connectedCount) / totalIntegrations) * 100) : 0}%
                 </div>
                 )}
               </div>
-              <p className="text-3xl font-light text-slate-900 mb-1">
-                {integrationsLoading ? <span className="inline-block h-8 w-12 bg-slate-100 rounded animate-pulse align-middle" /> : totalIntegrations - connectedCount}
+              <p className="text-4xl font-extralight text-slate-900 mb-1 tabular-nums">
+                {integrationsLoading ? <span className="inline-block h-9 w-12 bg-slate-100 rounded animate-pulse align-middle" /> : totalIntegrations - connectedCount}
               </p>
-              <p className="text-xs text-slate-500 uppercase tracking-wider font-light">Not Connected</p>
+              <p className="text-[11px] text-slate-500 uppercase tracking-widest font-light">Not Connected</p>
             </div>
           </div>
         </div>
@@ -1701,9 +1712,9 @@ const handleFacebookConnect = async (agentId: number) => {
           {integrationsLoading ? (
             <IntegrationsListSkeleton />
           ) : (
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-50 to-white px-8 py-5 border-b border-slate-200">
-              <div className="grid grid-cols-12 gap-4 text-xs font-medium text-slate-600 uppercase tracking-wider">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/70 overflow-hidden">
+            <div className="bg-gradient-to-r from-slate-50/80 to-white px-8 py-5 border-b border-slate-100">
+              <div className="grid grid-cols-12 gap-4 text-[11px] font-medium text-slate-400 uppercase tracking-widest">
                 <div className="col-span-4">Integration</div>
                 <div className="col-span-3">Status</div>
                 <div className="col-span-5 text-right">Action</div>
@@ -1711,10 +1722,10 @@ const handleFacebookConnect = async (agentId: number) => {
             </div>
 
             <div className="divide-y divide-slate-100">
-              {integrations.map((integration, index) => (
+              {[...integrations].sort((a, b) => a.name.localeCompare(b.name)).map((integration, index) => (
                 <div
                   key={index}
-                  className="relative px-8 py-6 hover:bg-slate-50/50 transition-all duration-200 group border-l-4 border-transparent hover:border-slate-300"
+                  className="relative px-8 py-6 hover:bg-slate-50/70 transition-all duration-200 group border-l-4 border-transparent hover:border-slate-300"
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
                     <div className="col-span-4">
@@ -1752,22 +1763,50 @@ const handleFacebookConnect = async (agentId: number) => {
 
                     <div className="col-span-3">
                       {checkingStatuses[integration.key] ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-light border border-slate-200 bg-slate-50 text-slate-500">
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                        <span className="inline-flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl text-xs font-medium shadow-sm shadow-slate-500/10 bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 text-slate-500">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           Checking
                         </span>
+                      ) : integration.status === "Connected" ? (
+                        <span className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl text-xs font-medium shadow-sm shadow-emerald-500/15 bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 border border-emerald-200/80 text-emerald-700">
+                          <span className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-green-600 shadow-sm shadow-emerald-500/40">
+                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                          </span>
+                          <span className="tracking-wide">Connected</span>
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                          </span>
+                        </span>
+                      ) : integration.status === "Pending" ? (
+                        <span className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl text-xs font-medium shadow-sm shadow-amber-500/15 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200/80 text-amber-700">
+                          <span className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-amber-300 to-orange-500 shadow-sm shadow-amber-500/40">
+                            <Clock className="w-3 h-3 text-white" strokeWidth={2.5} />
+                          </span>
+                          <span className="tracking-wide">Pending</span>
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-60"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                          </span>
+                        </span>
+                      ) : integration.isKitchenHub ? (
+                        <span className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl text-xs font-medium shadow-sm shadow-sky-500/10 bg-gradient-to-r from-sky-50 via-blue-50 to-sky-50 border border-sky-200/80 text-sky-700">
+                          <span className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 shadow-sm shadow-sky-500/40">
+                            <MapPin className="w-3 h-3 text-white" strokeWidth={2.5} />
+                          </span>
+                          <span className="tracking-wide">Active</span>
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-sky-400"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sky-500"></span>
+                          </span>
+                        </span>
                       ) : (
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-light border ${
-                        integration.status === "Connected"
-                          ? "bg-green-50 text-green-700 border-green-200"
-                          : integration.status === "Pending"
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : integration.isKitchenHub
-                          ? "bg-slate-50 text-slate-600 border-slate-200"
-                          : "bg-orange-50 text-orange-700 border-orange-200"
-                      }`}>
-                        {integration.status}
-                      </span>
+                        <span className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl text-xs font-medium shadow-sm shadow-slate-500/5 bg-gradient-to-r from-slate-50 to-white border border-dashed border-slate-300 text-slate-500">
+                          <span className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-slate-200/70">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                          </span>
+                          <span className="tracking-wide">Not Connected</span>
+                        </span>
                       )}
                     </div>
 
@@ -1783,7 +1822,7 @@ const handleFacebookConnect = async (agentId: number) => {
                         </button>
                       ) : integration.isWhatsApp ? (
                         <button
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#25D366] hover:bg-[#20bc59] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#25D366]/20"
+                          className={CONNECT_BUTTON_STYLE}
                           onClick={() => router.push("/dashboard/integrations/whatsapp")}
                         >
                           {integration.status === "Connected" ? "Manage" : "Connect"}
@@ -1791,7 +1830,7 @@ const handleFacebookConnect = async (agentId: number) => {
                         </button>
                       ) : integration.isWhatsAppSelf ? (
                         <button
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#128C7E] hover:bg-[#0e6b62] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#128C7E]/20"
+                          className={CONNECT_BUTTON_STYLE}
                           onClick={() => router.push("/dashboard/integrations/whatsappself")}
                         >
                           {integration.status === "Connected" ? "Manage" : "Connect"}
@@ -1799,7 +1838,7 @@ const handleFacebookConnect = async (agentId: number) => {
                         </button>
                       ) : integration.isKitchenHub ? (
                         <button
-                          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 text-sm font-light flex items-center gap-2"
+                          className={LOCATION_BUTTON_STYLE}
                           onClick={() => openKitchenHubModal()}
                         >
                           <MapPin className="w-4 h-4" />
@@ -1808,15 +1847,15 @@ const handleFacebookConnect = async (agentId: number) => {
                       ) : integration.isHMS ? (
                         integration.status === "Connected" ? (
                           <button
-                            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 text-sm font-light disabled:opacity-60"
+                            className={DISCONNECT_BUTTON_STYLE}
                             onClick={handleHMSDisconnect}
                             disabled={hmsDisconnecting}
                           >
-                            {hmsDisconnecting ? "Disconnecting..." : "Disconnect"}
+                            {hmsDisconnecting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Disconnecting...</> : "Disconnect"}
                           </button>
                         ) : (
                           <button
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-blue-600/20"
+                            className={CONNECT_BUTTON_STYLE}
                             onClick={() => { setHmsApiKey(""); setIsHMSModalOpen(true) }}
                           >
                             Connect
@@ -1826,15 +1865,15 @@ const handleFacebookConnect = async (agentId: number) => {
                       ) : integration.isShopify ? (
                         integration.status === "Connected" ? (
                           <button
-                            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 text-sm font-light disabled:opacity-60"
+                            className={DISCONNECT_BUTTON_STYLE}
                             onClick={handleShopifyDisconnect}
                             disabled={shopifyDisconnecting}
                           >
-                            {shopifyDisconnecting ? "Disconnecting..." : "Disconnect"}
+                            {shopifyDisconnecting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Disconnecting...</> : "Disconnect"}
                           </button>
                         ) : (
                           <button
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#96BF48] hover:bg-[#86ad3e] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#96BF48]/20"
+                            className={CONNECT_BUTTON_STYLE}
                             onClick={() => { setShopifyShop(""); setShopifyApp("public"); setShopifyConnectedApp(null); setIsShopifyModalOpen(true) }}
                           >
                             Connect
@@ -1844,15 +1883,15 @@ const handleFacebookConnect = async (agentId: number) => {
                       ) : integration.isZapier ? (
                         integration.status === "Connected" ? (
                           <button
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF4A00]/10 hover:bg-[#FF4A00]/20 text-[#FF4A00] rounded-xl transition-all duration-200 text-sm font-light"
+                            className={RECONNECT_BUTTON_STYLE}
                             onClick={() => openZapierModal()}
                           >
+                            <RefreshCw className="w-3.5 h-3.5" />
                             Reconnect
-                            <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         ) : (
                           <button
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF4A00] hover:bg-[#e64400] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#FF4A00]/20"
+                            className={CONNECT_BUTTON_STYLE}
                             onClick={() => openZapierModal()}
                           >
                             Connect Zapier
@@ -1862,15 +1901,15 @@ const handleFacebookConnect = async (agentId: number) => {
                       ) : integration.isGinkoRetail ? (
                         integration.status === "Connected" ? (
                           <button
-                            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 text-sm font-light disabled:opacity-60"
+                            className={DISCONNECT_BUTTON_STYLE}
                             onClick={handleGinkoRetailDisconnect}
                             disabled={ginkoretailDisconnecting}
                           >
-                            {ginkoretailDisconnecting ? "Disconnecting..." : "Disconnect"}
+                            {ginkoretailDisconnecting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Disconnecting...</> : "Disconnect"}
                           </button>
                         ) : (
                           <button
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-emerald-600/20"
+                            className={CONNECT_BUTTON_STYLE}
                             onClick={() => { setGinkoRetailApiToken(""); setGinkoRetailBaseUrl("https://monark-be.ginkgoretail.net"); setIsGinkoRetailModalOpen(true) }}
                           >
                             Connect
@@ -1880,15 +1919,15 @@ const handleFacebookConnect = async (agentId: number) => {
                       ) : integration.isGtech ? (
                         integration.status === "Connected" ? (
                           <button
-                            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 text-sm font-light disabled:opacity-60"
+                            className={DISCONNECT_BUTTON_STYLE}
                             onClick={handleGtechDisconnect}
                             disabled={gtechDisconnecting}
                           >
-                            {gtechDisconnecting ? "Disconnecting..." : "Disconnect"}
+                            {gtechDisconnecting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Disconnecting...</> : "Disconnect"}
                           </button>
                         ) : (
                           <button
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-blue-600/20"
+                            className={CONNECT_BUTTON_STYLE}
                             onClick={() => { setGtechApiToken(""); setGtechBaseUrl("https://monark.gtech-api.com"); setIsGtechModalOpen(true) }}
                           >
                             Connect
@@ -1898,15 +1937,15 @@ const handleFacebookConnect = async (agentId: number) => {
                       ) : integration.isPostEx ? (
                         integration.status === "Connected" ? (
                           <button
-                            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 text-sm font-light disabled:opacity-60"
+                            className={DISCONNECT_BUTTON_STYLE}
                             onClick={handlePostExDisconnect}
                             disabled={postexDisconnecting}
                           >
-                            {postexDisconnecting ? "Disconnecting..." : "Disconnect"}
+                            {postexDisconnecting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Disconnecting...</> : "Disconnect"}
                           </button>
                         ) : (
                           <button
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#E31E24] hover:bg-[#c41a1f] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#E31E24]/20"
+                            className={CONNECT_BUTTON_STYLE}
                             onClick={() => { setPostexToken(""); setPostexStoreCode("01"); setPostexCity("Lahore"); setIsPostExModalOpen(true) }}
                           >
                             Connect
@@ -1915,7 +1954,7 @@ const handleFacebookConnect = async (agentId: number) => {
                         )
                       ) : integration.status === "Connected" ? (
                         <button
-                          className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 text-sm font-light"
+                          className={DISCONNECT_BUTTON_STYLE}
                           onClick={async () => {
                             try {
                               const token = Cookies.get("Token") || ""
@@ -1975,12 +2014,23 @@ const handleFacebookConnect = async (agentId: number) => {
                           Disconnect
                         </button>
                       ) : (
-                        <button
-                          className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-200 text-sm font-light"
-                          onClick={() => handleConnect(integration)}
-                        >
-                          {integration.status === "Not Connected" ? "Connect" : "Reconnect"}
-                        </button>
+                        integration.status === "Not Connected" ? (
+                          <button
+                            className={CONNECT_BUTTON_STYLE}
+                            onClick={() => handleConnect(integration)}
+                          >
+                            Connect
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            className={RECONNECT_BUTTON_STYLE}
+                            onClick={() => handleConnect(integration)}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            Reconnect
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
