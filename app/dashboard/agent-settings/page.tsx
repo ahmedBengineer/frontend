@@ -112,8 +112,9 @@ function AgentSelection({ onSelectAgent }: { onSelectAgent: (agent: any) => void
       })
       const data = await response.json()
       console.log(data)
-      const enriched = Array.isArray(data)
-        ? data.map((agent) => ({
+      const rawList = Array.isArray(data) ? data : data?.results
+      const enriched = Array.isArray(rawList)
+        ? rawList.map((agent) => ({
             id: agent.id,
             name: agent.name,
             status: agent.status === "Active" || agent.status === "active" ? "Active" : "Inactive",
