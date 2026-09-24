@@ -323,6 +323,8 @@ const integrationKeyMap: Record<string, string> = {
   accesse11: "accesse11",
   clover: "clover",
   hms: "hms",
+  ginkoretail: "ginkoretail",
+  gtech: "gtech",
 }
 
 function IntegrationLogo({ integration }: { integration: any }) {
@@ -412,6 +414,22 @@ function IntegrationLogo({ integration }: { integration: any }) {
         </svg>
       ),
     },
+    ginkoretail: {
+      bg: "bg-emerald-50", hover: "group-hover:bg-emerald-100",
+      icon: (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-emerald-600">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-1v-.5c-1.71 0-3.37.54-4.8 1.52l.57 2.19c.66-.52 1.56-.83 2.56-.83 1.35 0 2.5.77 2.98 1.93l-.94 1.19c-.44-.6-1.16-.99-1.98-.99-.92 0-1.73.59-2.02 1.42h2v6.6h-2l.02.37c-.18.2-.36.4-.54.61-.37.4-.75.8-1.13 1.21-.23.25-.46.5-.69.75-.34.36-.68.72-1.01 1.09-.5.55-1 1.1-1.5 1.64v.37h12v-1c0-1.1-.9-2-2-2v-1.93c0 4.08-3.05 7.44-7 7.93z"/>
+        </svg>
+      ),
+    },
+    gtech: {
+      bg: "bg-blue-50", hover: "group-hover:bg-blue-100",
+      icon: (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-blue-600">
+          <path d="M19.4 12.9c-.5-.4-1.1-.7-1.7-.8V7c0-.6-.4-1-1-1h-3c-.6 0-1 .4-1 1v5.1c-.6.1-1.2.4-1.7.8-.5.4-.9.9-1.1 1.5l-2.3 4.9c-.2.5-.1 1.1.3 1.5.4.4 1 .5 1.5.3l4.9-2.3c.6-.3 1.1-.7 1.5-1.1.4-.4.7-.9.8-1.5l2.3-4.9c.2-.5.1-1.1-.3-1.5-.4-.4-1-.5-1.5-.3l-4.9 2.3zm-6.9 5.4c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm0-2c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4z"/>
+        </svg>
+      ),
+    },
   }
 
   const cfg = logos[integration.key]
@@ -484,6 +502,20 @@ export default function IntegrationsPage() {
       statusColor: "text-orange-600",
       isPostEx: true,
     },
+    {
+      key: "ginkoretail",
+      name: "Ginko Retail (Monark)",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+      isGinkoRetail: true,
+    },
+    {
+      key: "gtech",
+      name: "Gtech",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+      isGtech: true,
+    },
   ])
 
 
@@ -529,6 +561,18 @@ export default function IntegrationsPage() {
   const [postexCity, setPostexCity] = useState("Lahore")
   const [postexConnecting, setPostexConnecting] = useState(false)
   const [postexDisconnecting, setPostexDisconnecting] = useState(false)
+
+  const [isGinkoRetailModalOpen, setIsGinkoRetailModalOpen] = useState(false)
+  const [ginkoretailApiToken, setGinkoRetailApiToken] = useState("")
+  const [ginkoretailBaseUrl, setGinkoRetailBaseUrl] = useState("https://monark-be.ginkgoretail.net")
+  const [ginkoretailConnecting, setGinkoRetailConnecting] = useState(false)
+  const [ginkoretailDisconnecting, setGinkoRetailDisconnecting] = useState(false)
+
+  const [isGtechModalOpen, setIsGtechModalOpen] = useState(false)
+  const [gtechApiToken, setGtechApiToken] = useState("")
+  const [gtechBaseUrl, setGtechBaseUrl] = useState("https://monark.gtech-api.com")
+  const [gtechConnecting, setGtechConnecting] = useState(false)
+  const [gtechDisconnecting, setGtechDisconnecting] = useState(false)
 
 
 
@@ -679,6 +723,30 @@ export default function IntegrationsPage() {
           }
         } catch { /* non-critical */ }
 
+        // Fetch GinkoRetail status
+        let ginkoretailStatus = "Not Connected"
+        try {
+          const ginkoretailRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/ginkoretail/status/`, {
+            headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
+          })
+          if (ginkoretailRes.ok) {
+            const ginkoretailData = await ginkoretailRes.json()
+            if (ginkoretailData.connected === true) ginkoretailStatus = "Connected"
+          }
+        } catch { /* non-critical */ }
+
+        // Fetch Gtech status
+        let gtechStatus = "Not Connected"
+        try {
+          const gtechRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/gtech/status/`, {
+            headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
+          })
+          if (gtechRes.ok) {
+            const gtechData = await gtechRes.json()
+            if (gtechData.connected === true) gtechStatus = "Connected"
+          }
+        } catch { /* non-critical */ }
+
         setIntegrations((prev) =>
   prev.map((integration) => {
     if (integration.key === "kitchenhub") {
@@ -724,6 +792,20 @@ export default function IntegrationsPage() {
         ...integration,
         status: postexStatus,
         statusColor: postexStatus === "Connected" ? "text-green-600" : "text-orange-600",
+      }
+    }
+    if (integration.key === "ginkoretail") {
+      return {
+        ...integration,
+        status: ginkoretailStatus,
+        statusColor: ginkoretailStatus === "Connected" ? "text-green-600" : "text-orange-600",
+      }
+    }
+    if (integration.key === "gtech") {
+      return {
+        ...integration,
+        status: gtechStatus,
+        statusColor: gtechStatus === "Connected" ? "text-green-600" : "text-orange-600",
       }
     }
     return {
@@ -827,6 +909,20 @@ export default function IntegrationsPage() {
       setPostexStoreCode("01")
       setPostexCity("Lahore")
       setIsPostExModalOpen(true)
+      return
+    }
+
+    if (integration.key === "ginkoretail") {
+      setGinkoRetailApiToken("")
+      setGinkoRetailBaseUrl("https://monark-be.ginkgoretail.net")
+      setIsGinkoRetailModalOpen(true)
+      return
+    }
+
+    if (integration.key === "gtech") {
+      setGtechApiToken("")
+      setGtechBaseUrl("https://monark.gtech-api.com")
+      setIsGtechModalOpen(true)
       return
     }
 
@@ -979,6 +1075,108 @@ export default function IntegrationsPage() {
       toast({ description: err.message || "Error disconnecting PostEx.", variant: "destructive" })
     } finally {
       setPostexDisconnecting(false)
+    }
+  }
+
+  const handleGinkoRetailConnect = async () => {
+    if (!ginkoretailApiToken.trim()) {
+      toast({ description: "Please enter your Ginko Retail API token.", variant: "destructive" })
+      return
+    }
+    setGinkoRetailConnecting(true)
+    try {
+      const token = Cookies.get("Token") || ""
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/ginkoretail/connect/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
+        body: JSON.stringify({
+          api_token: ginkoretailApiToken.trim(),
+          base_url: ginkoretailBaseUrl.trim() || "https://monark-be.ginkgoretail.net",
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || data?.detail || "Failed to connect Ginko Retail.")
+      setIntegrations((prev) =>
+        prev.map((i) => i.key === "ginkoretail" ? { ...i, status: "Connected", statusColor: "text-green-600" } : i)
+      )
+      toast({ description: "Ginko Retail connected successfully!" })
+      setIsGinkoRetailModalOpen(false)
+      setGinkoRetailApiToken("")
+    } catch (err: any) {
+      toast({ description: err.message || "Error connecting Ginko Retail.", variant: "destructive" })
+    } finally {
+      setGinkoRetailConnecting(false)
+    }
+  }
+
+  const handleGinkoRetailDisconnect = async () => {
+    setGinkoRetailDisconnecting(true)
+    try {
+      const token = Cookies.get("Token") || ""
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/ginkoretail/disconnect/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
+      })
+      if (!res.ok) throw new Error("Failed to disconnect Ginko Retail.")
+      setIntegrations((prev) =>
+        prev.map((i) => i.key === "ginkoretail" ? { ...i, status: "Not Connected", statusColor: "text-orange-600" } : i)
+      )
+      toast({ description: "Ginko Retail disconnected." })
+    } catch (err: any) {
+      toast({ description: err.message || "Error disconnecting Ginko Retail.", variant: "destructive" })
+    } finally {
+      setGinkoRetailDisconnecting(false)
+    }
+  }
+
+  const handleGtechConnect = async () => {
+    if (!gtechApiToken.trim()) {
+      toast({ description: "Please enter your Gtech API token.", variant: "destructive" })
+      return
+    }
+    setGtechConnecting(true)
+    try {
+      const token = Cookies.get("Token") || ""
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/gtech/connect/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
+        body: JSON.stringify({
+          api_token: gtechApiToken.trim(),
+          base_url: gtechBaseUrl.trim() || "https://monark.gtech-api.com",
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || data?.detail || "Failed to connect Gtech.")
+      setIntegrations((prev) =>
+        prev.map((i) => i.key === "gtech" ? { ...i, status: "Connected", statusColor: "text-green-600" } : i)
+      )
+      toast({ description: "Gtech connected successfully!" })
+      setIsGtechModalOpen(false)
+      setGtechApiToken("")
+    } catch (err: any) {
+      toast({ description: err.message || "Error connecting Gtech.", variant: "destructive" })
+    } finally {
+      setGtechConnecting(false)
+    }
+  }
+
+  const handleGtechDisconnect = async () => {
+    setGtechDisconnecting(true)
+    try {
+      const token = Cookies.get("Token") || ""
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/gtech/disconnect/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
+      })
+      if (!res.ok) throw new Error("Failed to disconnect Gtech.")
+      setIntegrations((prev) =>
+        prev.map((i) => i.key === "gtech" ? { ...i, status: "Not Connected", statusColor: "text-orange-600" } : i)
+      )
+      toast({ description: "Gtech disconnected." })
+    } catch (err: any) {
+      toast({ description: err.message || "Error disconnecting Gtech.", variant: "destructive" })
+    } finally {
+      setGtechDisconnecting(false)
     }
   }
 
@@ -1523,6 +1721,42 @@ const handleFacebookConnect = async (agentId: number) => {
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         )
+                      ) : integration.isGinkoRetail ? (
+                        integration.status === "Connected" ? (
+                          <button
+                            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 text-sm font-light disabled:opacity-60"
+                            onClick={handleGinkoRetailDisconnect}
+                            disabled={ginkoretailDisconnecting}
+                          >
+                            {ginkoretailDisconnecting ? "Disconnecting..." : "Disconnect"}
+                          </button>
+                        ) : (
+                          <button
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-emerald-600/20"
+                            onClick={() => { setGinkoRetailApiToken(""); setGinkoRetailBaseUrl("https://monark-be.ginkgoretail.net"); setIsGinkoRetailModalOpen(true) }}
+                          >
+                            Connect
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )
+                      ) : integration.isGtech ? (
+                        integration.status === "Connected" ? (
+                          <button
+                            className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 text-sm font-light disabled:opacity-60"
+                            onClick={handleGtechDisconnect}
+                            disabled={gtechDisconnecting}
+                          >
+                            {gtechDisconnecting ? "Disconnecting..." : "Disconnect"}
+                          </button>
+                        ) : (
+                          <button
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-blue-600/20"
+                            onClick={() => { setGtechApiToken(""); setGtechBaseUrl("https://monark.gtech-api.com"); setIsGtechModalOpen(true) }}
+                          >
+                            Connect
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )
                       ) : integration.isPostEx ? (
                         integration.status === "Connected" ? (
                           <button
@@ -1558,6 +1792,12 @@ const handleFacebookConnect = async (agentId: number) => {
                               else if (integration.key === "salesforce") {
                             deleteUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/salesforce/disconnect/`
                           }
+                              else if (integration.key === "ginkoretail") {
+                            deleteUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/ginkoretail/disconnect/`
+                          }
+                              else if (integration.key === "gtech") {
+                            deleteUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/integrations/gtech/disconnect/`
+                          }
 
 
                               if (!deleteUrl) {
@@ -1565,9 +1805,11 @@ const handleFacebookConnect = async (agentId: number) => {
                                 return
                               }
 
+                              // Use POST for ginkoretail and gtech, DELETE for others
+                              const disconnectMethod = (integration.key === "ginkoretail" || integration.key === "gtech") ? "POST" : "DELETE"
 
                               const res = await fetch(deleteUrl, {
-                                method: "DELETE",
+                                method: disconnectMethod,
                                 headers: {
                                   "Content-Type": "application/json",
                                   Authorization: `Token ${token}`,
@@ -1851,6 +2093,122 @@ const handleFacebookConnect = async (agentId: number) => {
               disabled={postexConnecting}
             >
               {postexConnecting ? "Connecting..." : "Connect"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* GinkoRetail (Monark) Modal */}
+      <Dialog open={isGinkoRetailModalOpen} onOpenChange={setIsGinkoRetailModalOpen}>
+        <DialogContent className="rounded-2xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-light text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-emerald-600">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-1v-.5c-1.71 0-3.37.54-4.8 1.52l.57 2.19c.66-.52 1.56-.83 2.56-.83 1.35 0 2.5.77 2.98 1.93l-.94 1.19c-.44-.6-1.16-.99-1.98-.99-.92 0-1.73.59-2.02 1.42h2v6.6h-2l.02.37c-.18.2-.36.4-.54.61-.37.4-.75.8-1.13 1.21-.23.25-.46.5-.69.75-.34.36-.68.72-1.01 1.09-.5.55-1 1.1-1.5 1.64v.37h12v-1c0-1.1-.9-2-2-2v-1.93c0 4.08-3.05 7.44-7 7.93z"/>
+                </svg>
+              </div>
+              Connect Ginko Retail (Monark)
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-500 font-light">
+            Enter your Ginko Retail API token and base URL. The base URL defaults to the Monark environment.
+          </p>
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="ginkoretail-base-url" className="text-sm font-light text-slate-700">Base URL</Label>
+              <Input
+                id="ginkoretail-base-url"
+                value={ginkoretailBaseUrl}
+                onChange={(e) => setGinkoRetailBaseUrl(e.target.value)}
+                placeholder="https://monark-be.ginkgoretail.net"
+                className="rounded-xl border-slate-200 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ginkoretail-token" className="text-sm font-light text-slate-700">API Token</Label>
+              <Input
+                id="ginkoretail-token"
+                type="password"
+                value={ginkoretailApiToken}
+                onChange={(e) => setGinkoRetailApiToken(e.target.value)}
+                placeholder="Your API token..."
+                className="rounded-xl border-slate-200 font-mono text-sm"
+                onKeyDown={(e) => e.key === "Enter" && handleGinkoRetailConnect()}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 mt-2">
+            <button
+              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-all duration-200 text-sm font-light"
+              onClick={() => setIsGinkoRetailModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all duration-200 text-sm font-light disabled:opacity-60"
+              onClick={handleGinkoRetailConnect}
+              disabled={ginkoretailConnecting}
+            >
+              {ginkoretailConnecting ? "Connecting..." : "Connect"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Gtech Modal */}
+      <Dialog open={isGtechModalOpen} onOpenChange={setIsGtechModalOpen}>
+        <DialogContent className="rounded-2xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-light text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-blue-600">
+                  <path d="M19.4 12.9c-.5-.4-1.1-.7-1.7-.8V7c0-.6-.4-1-1-1h-3c-.6 0-1 .4-1 1v5.1c-.6.1-1.2.4-1.7.8-.5.4-.9.9-1.1 1.5l-2.3 4.9c-.2.5-.1 1.1.3 1.5.4.4 1 .5 1.5.3l4.9-2.3c.6-.3 1.1-.7 1.5-1.1.4-.4.7-.9.8-1.5l2.3-4.9c.2-.5.1-1.1-.3-1.5-.4-.4-1-.5-1.5-.3l-4.9 2.3zm-6.9 5.4c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm0-2c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4z"/>
+                </svg>
+              </div>
+              Connect Gtech
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-500 font-light">
+            Enter your Gtech API token and base URL. The base URL defaults to the Monark environment.
+          </p>
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="gtech-base-url" className="text-sm font-light text-slate-700">Base URL</Label>
+              <Input
+                id="gtech-base-url"
+                value={gtechBaseUrl}
+                onChange={(e) => setGtechBaseUrl(e.target.value)}
+                placeholder="https://monark.gtech-api.com"
+                className="rounded-xl border-slate-200 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="gtech-token" className="text-sm font-light text-slate-700">API Token</Label>
+              <Input
+                id="gtech-token"
+                type="password"
+                value={gtechApiToken}
+                onChange={(e) => setGtechApiToken(e.target.value)}
+                placeholder="Your API token..."
+                className="rounded-xl border-slate-200 font-mono text-sm"
+                onKeyDown={(e) => e.key === "Enter" && handleGtechConnect()}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 mt-2">
+            <button
+              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-all duration-200 text-sm font-light"
+              onClick={() => setIsGtechModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 text-sm font-light disabled:opacity-60"
+              onClick={handleGtechConnect}
+              disabled={gtechConnecting}
+            >
+              {gtechConnecting ? "Connecting..." : "Connect"}
             </button>
           </DialogFooter>
         </DialogContent>
