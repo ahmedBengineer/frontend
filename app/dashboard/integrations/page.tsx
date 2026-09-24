@@ -327,6 +327,22 @@ const integrationKeyMap: Record<string, string> = {
   gtech: "gtech",
 }
 
+const INTEGRATION_CHECK_KEYS = [
+  "whatsapp",
+  "whatsappself",
+  "facebook",
+  "salesforce",
+  "accesse11",
+  "clover",
+  "kitchenhub",
+  "hms",
+  "shopify",
+  "zapier",
+  "postex",
+  "ginkoretail",
+  "gtech",
+]
+
 function IntegrationLogo({ integration }: { integration: any }) {
   const logos: Record<string, { bg: string; hover: string; icon: React.ReactNode }> = {
     whatsapp: {
@@ -443,6 +459,76 @@ function IntegrationLogo({ integration }: { integration: any }) {
   return (
     <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${cfg.bg} ${cfg.hover}`}>
       {cfg.icon}
+    </div>
+  )
+}
+
+function SkeletonRow() {
+  return (
+    <div className="px-8 py-6">
+      <div className="grid grid-cols-12 gap-4 items-center">
+        <div className="col-span-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-3 w-36 bg-slate-100 rounded animate-pulse" />
+            <div className="h-2.5 w-24 bg-slate-100 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="col-span-3">
+          <div className="h-6 w-24 bg-slate-100 rounded-full animate-pulse" />
+        </div>
+        <div className="col-span-5 flex justify-end">
+          <div className="h-9 w-32 bg-slate-100 rounded-xl animate-pulse" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function IntegrationsListSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-50 to-white px-8 py-5 border-b border-slate-200">
+        <div className="grid grid-cols-12 gap-4 text-xs font-medium text-slate-600 uppercase tracking-wider">
+          <div className="col-span-4">Integration</div>
+          <div className="col-span-3">Status</div>
+          <div className="col-span-5 text-right">Action</div>
+        </div>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {Array.from({ length: 7 }).map((_, i) => <SkeletonRow key={i} />)}
+      </div>
+    </div>
+  )
+}
+
+function IntegrationsPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      <div className="relative overflow-hidden bg-white border-b border-slate-200">
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-50/50 via-transparent to-slate-50/50" />
+        <div className="relative max-w-7xl mx-auto px-8 py-16">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="h-20 w-1 bg-slate-100 rounded-full" />
+            <div className="space-y-3">
+              <div className="h-9 w-52 bg-slate-100 rounded animate-pulse" />
+              <div className="h-4 w-80 bg-slate-100 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white border border-slate-100 rounded-2xl p-6 space-y-3">
+                <div className="w-12 h-12 bg-slate-100 rounded-xl animate-pulse" />
+                <div className="h-8 w-14 bg-slate-100 rounded animate-pulse" />
+                <div className="h-3 w-28 bg-slate-100 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-8 py-12">
+        <IntegrationsListSkeleton />
+      </div>
     </div>
   )
 }
@@ -581,6 +667,8 @@ export default function IntegrationsPage() {
 
   const pathname = usePathname()
   const [hasTwilioPhones, setHasTwilioPhones] = useState<boolean | null>(null)
+  const [integrationsLoading, setIntegrationsLoading] = useState(true)
+  const [checkingStatuses, setCheckingStatuses] = useState<Record<string, boolean>>({})
 
 
   // 🔹 Check if Twilio phone numbers exist
@@ -617,6 +705,12 @@ export default function IntegrationsPage() {
   useEffect(() => {
     const fetchIntegrations = async () => {
       try {
+        setIntegrationsLoading(true)
+        setCheckingStatuses(
+          INTEGRATION_CHECK_KEYS.reduce((acc, key) => { acc[key] = true; return acc }, {} as Record<string, boolean>)
+        )
+        setCheckingStatuses((prev) => ({ ...prev, kitchenhub: false }))
+
         const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/crm-integrations/`, {
           headers: {
             "Content-Type": "application/json",
@@ -635,6 +729,16 @@ export default function IntegrationsPage() {
           .filter((item: any) => item.status === "active")
           .map((item: any) => integrationKeyMap[item.crm_type.toLowerCase()] || item.crm_type.toLowerCase())
 
+        setCheckingStatuses((prev) => ({
+          ...prev,
+          clover: false,
+          accesse11: false,
+          salesforce: false,
+          facebook: false,
+        }))
+
+        setIntegrationsLoading(false)
+
 
         // Fetch WhatsApp status separately
         let waStatus = "Not Connected"
@@ -648,6 +752,7 @@ export default function IntegrationsPage() {
             else if (waData.status === "pending") waStatus = "Pending"
           }
         } catch { /* non-critical */ }
+        setCheckingStatuses((prev) => ({ ...prev, whatsapp: false }))
 
         // Fetch WhatsApp Self (Baileys) status
         let waSelfStatus = "Not Connected"
@@ -664,6 +769,7 @@ export default function IntegrationsPage() {
             }
           }
         } catch { /* non-critical */ }
+        setCheckingStatuses((prev) => ({ ...prev, whatsappself: false }))
 
         // Fetch HMS status
         let hmsStatus = "Not Connected"
@@ -676,6 +782,7 @@ export default function IntegrationsPage() {
             if (hmsData.connected === true) hmsStatus = "Connected"
           }
         } catch { /* non-critical */ }
+        setCheckingStatuses((prev) => ({ ...prev, hms: false }))
 
         // Fetch Shopify status
         let shopifyStatus = "Not Connected"
@@ -693,6 +800,7 @@ export default function IntegrationsPage() {
             }
           }
         } catch { /* non-critical */ }
+        setCheckingStatuses((prev) => ({ ...prev, shopify: false }))
 
         // Fetch Zapier status (webhook secret configured + whether a lead webhook has been received)
         let zapierStatus = "Not Connected"
@@ -710,6 +818,7 @@ export default function IntegrationsPage() {
             setZapierLastEvent(zapierStatusData.last_event)
           }
         } catch { /* non-critical */ }
+        setCheckingStatuses((prev) => ({ ...prev, zapier: false }))
 
         // Fetch PostEx status
         let postexStatus = "Not Connected"
@@ -722,6 +831,7 @@ export default function IntegrationsPage() {
             if (postexData.connected === true) postexStatus = "Connected"
           }
         } catch { /* non-critical */ }
+        setCheckingStatuses((prev) => ({ ...prev, postex: false }))
 
         // Fetch GinkoRetail status
         let ginkoretailStatus = "Not Connected"
@@ -734,6 +844,7 @@ export default function IntegrationsPage() {
             if (ginkoretailData.connected === true) ginkoretailStatus = "Connected"
           }
         } catch { /* non-critical */ }
+        setCheckingStatuses((prev) => ({ ...prev, ginkoretail: false }))
 
         // Fetch Gtech status
         let gtechStatus = "Not Connected"
@@ -746,6 +857,7 @@ export default function IntegrationsPage() {
             if (gtechData.connected === true) gtechStatus = "Connected"
           }
         } catch { /* non-critical */ }
+        setCheckingStatuses((prev) => ({ ...prev, gtech: false }))
 
         setIntegrations((prev) =>
   prev.map((integration) => {
@@ -820,6 +932,9 @@ export default function IntegrationsPage() {
       } catch (error) {
         console.error("Error fetching integrations:", error)
         toast({ description: "Failed to fetch integrations.", variant: "destructive" })
+        setCheckingStatuses(INTEGRATION_CHECK_KEYS.reduce((acc, key) => { acc[key] = false; return acc }, {} as Record<string, boolean>))
+      } finally {
+        setIntegrationsLoading(false)
       }
     }
 
@@ -1502,17 +1617,7 @@ const handleFacebookConnect = async (agentId: number) => {
   const totalIntegrations = integrations.filter(i => !i.isKitchenHub).length
 
   if (hasTwilioPhones === null) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="relative w-20 h-20 mx-auto">
-            <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-slate-900 rounded-full border-t-transparent animate-spin"></div>
-          </div>
-          <p className="text-slate-600 font-light tracking-wide">Loading integrations...</p>
-        </div>
-      </div>
-    )
+    return <IntegrationsPageSkeleton />
   }
 
 
@@ -1543,7 +1648,9 @@ const handleFacebookConnect = async (agentId: number) => {
                   <Link2 className="w-6 h-6 text-slate-600 group-hover:text-white transition-colors duration-300" />
                 </div>
               </div>
-              <p className="text-3xl font-light text-slate-900 mb-1">{totalIntegrations}</p>
+              <p className="text-3xl font-light text-slate-900 mb-1">
+                {integrationsLoading ? <span className="inline-block h-8 w-12 bg-slate-100 rounded animate-pulse align-middle" /> : totalIntegrations}
+              </p>
               <p className="text-xs text-slate-500 uppercase tracking-wider font-light">Total Integrations</p>
             </div>
 
@@ -1552,11 +1659,17 @@ const handleFacebookConnect = async (agentId: number) => {
                 <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center group-hover:bg-green-500 group-hover:scale-110 transition-all duration-300">
                   <CheckCircle2 className="w-6 h-6 text-green-600 group-hover:text-white transition-colors duration-300" />
                 </div>
+                {integrationsLoading ? (
+                  <div className="h-5 w-12 bg-slate-100 rounded-full animate-pulse" />
+                ) : (
                 <div className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">
                   {totalIntegrations > 0 ? Math.round((connectedCount / totalIntegrations) * 100) : 0}%
                 </div>
+                )}
               </div>
-              <p className="text-3xl font-light text-slate-900 mb-1">{connectedCount}</p>
+              <p className="text-3xl font-light text-slate-900 mb-1">
+                {integrationsLoading ? <span className="inline-block h-8 w-12 bg-slate-100 rounded animate-pulse align-middle" /> : connectedCount}
+              </p>
               <p className="text-xs text-slate-500 uppercase tracking-wider font-light">Connected</p>
             </div>
 
@@ -1565,11 +1678,17 @@ const handleFacebookConnect = async (agentId: number) => {
                 <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center group-hover:bg-orange-500 group-hover:scale-110 transition-all duration-300">
                   <XCircle className="w-6 h-6 text-orange-600 group-hover:text-white transition-colors duration-300" />
                 </div>
+                {integrationsLoading ? (
+                  <div className="h-5 w-12 bg-slate-100 rounded-full animate-pulse" />
+                ) : (
                 <div className="text-xs text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded-full">
                   {totalIntegrations > 0 ? Math.round(((totalIntegrations - connectedCount) / totalIntegrations) * 100) : 0}%
                 </div>
+                )}
               </div>
-              <p className="text-3xl font-light text-slate-900 mb-1">{totalIntegrations - connectedCount}</p>
+              <p className="text-3xl font-light text-slate-900 mb-1">
+                {integrationsLoading ? <span className="inline-block h-8 w-12 bg-slate-100 rounded animate-pulse align-middle" /> : totalIntegrations - connectedCount}
+              </p>
               <p className="text-xs text-slate-500 uppercase tracking-wider font-light">Not Connected</p>
             </div>
           </div>
@@ -1579,6 +1698,9 @@ const handleFacebookConnect = async (agentId: number) => {
       {/* Main Content */}
       {hasTwilioPhones && (
         <div className="max-w-7xl mx-auto px-8 py-12">
+          {integrationsLoading ? (
+            <IntegrationsListSkeleton />
+          ) : (
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
             <div className="bg-gradient-to-r from-slate-50 to-white px-8 py-5 border-b border-slate-200">
               <div className="grid grid-cols-12 gap-4 text-xs font-medium text-slate-600 uppercase tracking-wider">
@@ -1629,6 +1751,12 @@ const handleFacebookConnect = async (agentId: number) => {
                     </div>
 
                     <div className="col-span-3">
+                      {checkingStatuses[integration.key] ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-light border border-slate-200 bg-slate-50 text-slate-500">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Checking
+                        </span>
+                      ) : (
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-light border ${
                         integration.status === "Connected"
                           ? "bg-green-50 text-green-700 border-green-200"
@@ -1640,10 +1768,20 @@ const handleFacebookConnect = async (agentId: number) => {
                       }`}>
                         {integration.status}
                       </span>
+                      )}
                     </div>
 
                     <div className="col-span-5 flex justify-end">
-                      {integration.isWhatsApp ? (
+                      {checkingStatuses[integration.key] ? (
+                        <button
+                          disabled
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 text-slate-400 rounded-xl text-sm font-light cursor-wait"
+                          title="Checking connection status"
+                        >
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Checking status...
+                        </button>
+                      ) : integration.isWhatsApp ? (
                         <button
                           className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#25D366] hover:bg-[#20bc59] text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-[#25D366]/20"
                           onClick={() => router.push("/dashboard/integrations/whatsapp")}
@@ -1850,6 +1988,7 @@ const handleFacebookConnect = async (agentId: number) => {
               ))}
             </div>
           </div>
+          )}
 
           <div className="mt-16 flex items-center justify-center gap-2">
             <div className="w-1 h-1 bg-slate-300 rounded-full animate-pulse"></div>
