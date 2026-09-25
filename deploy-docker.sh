@@ -4,7 +4,6 @@ set -euo pipefail
 branch="${1:?Usage: deploy-docker.sh <branch>}"
 minimum_free_gb="${DOCKER_MIN_FREE_GB:-4}"
 image_name="${DOCKER_IMAGE_NAME:-pentagon-frontend:latest}"
-builder_cache_gb="${DOCKER_BUILDER_CACHE_GB:-3}"
 
 free_gb() {
   local available_kb
@@ -18,15 +17,24 @@ print_disk_usage() {
 }
 
 prune_unused_docker_data() {
-  # Keep BuildKit layer cache: nuking it with -af forces a full cold build
-  # (npm ci + next build) on every deploy. Only reclaim space when asked.
+  # Age-based prune: drop build layers untouched for a week, keep anything the
+  # last build used. Never use -af unconditionally (full cold build every run)
+  # and don't rely on --keep-storage, which has historically wiped everything.
   docker image prune -f || true
-  docker builder prune -f --keep-storage "${builder_cache_gb}g" || true
+  docker builder prune -af --filter "until=168h" || true
 }
 
 echo "=== Deploying ${branch} ==="
 git checkout "${branch}"
 git pull --ff-only origin "${branch}"
+
+# git pull may have just rewritten THIS script while bash was still reading it,
+# which means the rest of the run can execute stale or shifted lines. Re-exec
+# from disk so the whole run uses the committed version (guard stops loops).
+if [ "${DEPLOY_REEXEC:-0}" != "1" ]; then
+  export DEPLOY_REEXEC=1
+  exec bash "$0" "$@"
+fi
 
 echo "Disk usage before cleanup:"
 print_disk_usage
@@ -59,8 +67,6 @@ echo "Waiting for the frontend health endpoint..."
 for _ in $(seq 1 18); do
   if curl -fsS --max-time 5 http://localhost:3000/api/health/deep >/dev/null; then
     docker image prune -af --filter "until=24h" || true
-    # Keep build layers for a week so the next deploy reuses npm ci / base layers.
-    docker builder prune -af --filter "until=168h" || true
     echo "=== Deployment complete ==="
     exit 0
   fi
