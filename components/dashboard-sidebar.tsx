@@ -487,6 +487,7 @@ import {
   Rabbit,
   GripVertical,
   Megaphone,
+  Activity,
 } from "lucide-react"
 
 const navigationItems = [
@@ -540,6 +541,12 @@ const navigationItems = [
     title: "Reporting",
     href: "/dashboard/reporting",
     icon: Sparkles,
+    companyOnly: true,
+  },
+  {
+    title: "Analytics",
+    href: "/dashboard/analytics",
+    icon: Activity,
     companyOnly: true,
   },
   {
