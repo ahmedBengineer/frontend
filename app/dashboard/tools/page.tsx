@@ -449,45 +449,55 @@ export default function ToolsPage() {
   const [loadingAgents, setLoadingAgents] = useState(false)
 
 
-  // Fetch tools
-useEffect(() => {
-  const fetchTools = async () => {
-    try {
-      setLoading(true)
+// Helper to fetch all pages from a paginated API
+  const fetchAllPages = async (initialUrl: string, token: string) => {
+    let allResults: any[] = []
+    let nextUrl: string | null = initialUrl
+    
+    while (nextUrl) {
+      const res = await fetch(nextUrl, {
+        headers: { Authorization: `Token ${token}` },
+      })
+      if (!res.ok) throw new Error("Failed to fetch")
+      const data = await res.json()
       
-      if (selectedAgentId !== "ALL") {
+      const results = Array.isArray(data) ? data : (data?.results ?? [])
+      allResults = allResults.concat(results)
+      
+      nextUrl = data?.next ?? null
+    }
+    
+    return allResults
+  }
+
+// Fetch tools
+  useEffect(() => {
+    const fetchTools = async () => {
+      try {
+        setLoading(true)
+        const token = Cookies.get("Token") || ""
+        
+        if (selectedAgentId !== "ALL") {
         // Fetch tools for specific agent (like in agents page)
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${selectedAgentId}/`,
-          {
-            headers: {
-              Authorization: `Token ${Cookies.get("Token") || ""}`,
-            },
-          }
-        )
+        const agentUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${selectedAgentId}/`
+        const res = await fetch(agentUrl, {
+          headers: { Authorization: `Token ${token}` },
+        })
         if (!res.ok) throw new Error("Failed to fetch agent tools")
         const data = await res.json()
         console.log("Fetched agent tools:", data)
         
-        // Extract custom_features from agent data
+        // Extract custom_features from agent data (handle paginated response)
         const agentTools = Array.isArray(data.custom_features)
           ? data.custom_features.map(normalizeToolShape)
-          : []
+          : (data.custom_features?.results ?? []).map(normalizeToolShape)
         setTools(agentTools)
       } else {
-        // Fetch all tools
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/`,
-          {
-            headers: {
-              Authorization: `Token ${Cookies.get("Token") || ""}`,
-            },
-          }
-        )
-        if (!res.ok) throw new Error("Failed to fetch tools")
-        const data = await res.json()
-        console.log("Fetched all tools:", data)
-        const mappedTools = Array.isArray(data) ? data.map(normalizeToolShape) : []
+        // Fetch all tools - get all pages if paginated
+        const initialUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/`
+        const allTools = await fetchAllPages(initialUrl, token)
+        console.log("Fetched all tools:", allTools)
+        const mappedTools = allTools.map(normalizeToolShape)
         setTools(mappedTools)
       }
     } catch (error) {
@@ -521,30 +531,26 @@ const fetchToolDetails = async (id: string | number) => {
 }
 
 useEffect(() => {
-  const fetchAgents = async () => {
-    try {
-      setLoadingAgents(true)
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`,
-        {
-          headers: {
-            Authorization: `Token ${Cookies.get("Token") || ""}`,
-          },
-        }
-      )
-      if (!res.ok) throw new Error("Failed to fetch agents")
-      const data = await res.json()
-      setAgents(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error("Error fetching agents:", error)
-    } finally {
-      setLoadingAgents(false)
+      const fetchAgents = async () => {
+      try {
+        setLoadingAgents(true)
+        const token = Cookies.get("Token") || ""
+        // Fetch all agents (handle pagination if needed)
+        const allAgents = await fetchAllPages(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`,
+          token
+        )
+        setAgents(allAgents)
+      } catch (error) {
+        console.error("Error fetching agents:", error)
+      } finally {
+        setLoadingAgents(false)
+      }
     }
-  }
 
 
-  fetchAgents()
-}, [])
+    fetchAgents()
+  }, [])
 
 
   // Confirm delete via toast
