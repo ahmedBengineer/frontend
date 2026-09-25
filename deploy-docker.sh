@@ -4,6 +4,7 @@ set -euo pipefail
 branch="${1:?Usage: deploy-docker.sh <branch>}"
 minimum_free_gb="${DOCKER_MIN_FREE_GB:-4}"
 image_name="${DOCKER_IMAGE_NAME:-pentagon-frontend:latest}"
+builder_cache_gb="${DOCKER_BUILDER_CACHE_GB:-3}"
 
 free_gb() {
   local available_kb
@@ -17,8 +18,10 @@ print_disk_usage() {
 }
 
 prune_unused_docker_data() {
-  docker image prune -af || true
-  docker builder prune -af || true
+  # Keep BuildKit layer cache: nuking it with -af forces a full cold build
+  # (npm ci + next build) on every deploy. Only reclaim space when asked.
+  docker image prune -f || true
+  docker builder prune -f --keep-storage "${builder_cache_gb}g" || true
 }
 
 echo "=== Deploying ${branch} ==="
@@ -35,7 +38,8 @@ if [ "${available_gb}" -lt "${minimum_free_gb}" ]; then
   docker compose stop frontend || true
   docker compose rm -f frontend || true
   docker image rm -f "${image_name}" || true
-  prune_unused_docker_data
+  # Last resort: only nuke the build cache when we're actually out of disk.
+  docker builder prune -af || true
   available_gb="$(free_gb)"
 fi
 
@@ -55,7 +59,8 @@ echo "Waiting for the frontend health endpoint..."
 for _ in $(seq 1 18); do
   if curl -fsS --max-time 5 http://localhost:3000/api/health/deep >/dev/null; then
     docker image prune -af --filter "until=24h" || true
-    docker builder prune -af --filter "until=24h" || true
+    # Keep build layers for a week so the next deploy reuses npm ci / base layers.
+    docker builder prune -af --filter "until=168h" || true
     echo "=== Deployment complete ==="
     exit 0
   fi
