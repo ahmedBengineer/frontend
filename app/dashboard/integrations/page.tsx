@@ -674,6 +674,7 @@ export default function IntegrationsPage() {
   const [hasTwilioPhones, setHasTwilioPhones] = useState<boolean | null>(null)
   const [integrationsLoading, setIntegrationsLoading] = useState(true)
   const [checkingStatuses, setCheckingStatuses] = useState<Record<string, boolean>>({})
+  const [statusFilter, setStatusFilter] = useState<"all" | "connected" | "not_connected">("all")
 
 
   // 🔹 Check if Twilio phone numbers exist
@@ -1712,6 +1713,29 @@ const handleFacebookConnect = async (agentId: number) => {
           {integrationsLoading ? (
             <IntegrationsListSkeleton />
           ) : (
+          <>
+          <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-xs uppercase tracking-widest text-slate-400 font-light">
+              {statusFilter === "all"
+                ? `${integrations.length} integrations`
+                : `${[...integrations].filter((i) => statusFilter === "connected" ? i.status === "Connected" : i.status !== "Connected").length} ${statusFilter === "connected" ? "connected" : "not connected"}`}
+            </p>
+            <div className="inline-flex items-center gap-1 p-1 bg-white border border-slate-200/70 rounded-2xl shadow-sm">
+              {(["all", "connected", "not_connected"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setStatusFilter(f)}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-light transition-all duration-200 ${
+                    statusFilter === f
+                      ? "bg-slate-900 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                  }`}
+                >
+                  {f === "all" ? "All" : f === "connected" ? "Connected" : "Not Connected"}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200/70 overflow-hidden">
             <div className="bg-gradient-to-r from-slate-50/80 to-white px-8 py-5 border-b border-slate-100">
               <div className="grid grid-cols-12 gap-4 text-[11px] font-medium text-slate-400 uppercase tracking-widest">
@@ -1722,7 +1746,16 @@ const handleFacebookConnect = async (agentId: number) => {
             </div>
 
             <div className="divide-y divide-slate-100">
-              {[...integrations].sort((a, b) => a.name.localeCompare(b.name)).map((integration, index) => (
+              {[...integrations]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .filter((i) =>
+                  statusFilter === "all"
+                    ? true
+                    : statusFilter === "connected"
+                    ? i.status === "Connected"
+                    : i.status !== "Connected"
+                )
+                .map((integration, index) => (
                 <div
                   key={index}
                   className="relative px-8 py-6 hover:bg-slate-50/70 transition-all duration-200 group border-l-4 border-transparent hover:border-slate-300"
@@ -2037,7 +2070,21 @@ const handleFacebookConnect = async (agentId: number) => {
                 </div>
               ))}
             </div>
+            {[...integrations].filter((i) =>
+              statusFilter === "all"
+                ? true
+                : statusFilter === "connected"
+                ? i.status === "Connected"
+                : i.status !== "Connected"
+            ).length === 0 && (
+              <div className="px-8 py-14 text-center">
+                <p className="text-sm text-slate-400 font-light">
+                  No {statusFilter === "connected" ? "connected" : "not connected"} integrations found.
+                </p>
+              </div>
+            )}
           </div>
+          </>
           )}
 
           <div className="mt-16 flex items-center justify-center gap-2">

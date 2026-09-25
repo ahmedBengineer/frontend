@@ -129,7 +129,9 @@ export default function UsersPage() {
   
 
 
-      const mappedUsers = data.map((user: any, index: number) => ({
+      const list = Array.isArray(data) ? data : data?.results ?? []
+
+      const mappedUsers = list.map((user: any, index: number) => ({
         id: user.id || `user${index + 1}`,
         firstName: user.user_first_name,
         lastName: user.user_last_name,
