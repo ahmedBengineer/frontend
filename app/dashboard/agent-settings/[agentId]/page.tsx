@@ -441,12 +441,24 @@ function ToolsTab({ agentId }: { agentId: string }) {
     if (allCustomTools.length > 0) return
     setLoadingCustomTools(true)
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/`,
-        { headers: { Authorization: `Token ${Cookies.get("Token") || ""}` } }
-      )
-      const data = await res.json()
-      setAllCustomTools(Array.isArray(data) ? data : [])
+      const token = Cookies.get("Token") || ""
+      let allResults: any[] = []
+      let nextUrl: string | null = `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/`
+      
+      while (nextUrl) {
+        const res = await fetch(nextUrl, {
+          headers: { Authorization: `Token ${token}` },
+        })
+        if (!res.ok) throw new Error("Failed to fetch")
+        const data = await res.json()
+        
+        const results = Array.isArray(data) ? data : (data?.results ?? [])
+        allResults = allResults.concat(results)
+        
+        nextUrl = data?.next ?? null
+      }
+      
+      setAllCustomTools(allResults)
     } catch {
       toast({ description: "Failed to load tools.", variant: "destructive" })
     } finally {

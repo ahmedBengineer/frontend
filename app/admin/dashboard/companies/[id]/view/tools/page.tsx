@@ -60,19 +60,27 @@ export default function AdminCompanyTools() {
     const fetchCompanyTools = async () => {
       setLoading(true)
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/?company_id=${id}`,
-          {
+        const token = Cookies.get("adminToken") || ""
+        let allResults: any[] = []
+        let nextUrl: string | null = `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/?company_id=${id}`
+        
+        while (nextUrl) {
+          const res = await fetch(nextUrl, {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Token ${Cookies.get("adminToken") || ""}`,
+              Authorization: `Token ${token}`,
             },
-          }
-        )
-
-        if (!res.ok) throw new Error("Failed to fetch company tools")
-        const data = await res.json()
-        setTools(Array.isArray(data) ? data : [])
+          })
+          if (!res.ok) throw new Error("Failed to fetch")
+          const data = await res.json()
+          
+          const results = Array.isArray(data) ? data : (data?.results ?? [])
+          allResults = allResults.concat(results)
+          
+          nextUrl = data?.next ?? null
+        }
+        
+        setTools(allResults)
       } catch (error) {
         console.error("Error fetching company tools:", error)
         toast({
