@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
  * Protected methods: POST, PUT, PATCH, DELETE
  */
 
-const ENABLED = false; // Set to true to enable password protection
+const ENABLED = true; // Set to true to enable password protection
 
 // const PROTECTED_PATHS = [
 //   "/api/workflow-studio/agents/",
