@@ -19,16 +19,22 @@ export function useProtectedFetch() {
   const isProtectedPath = useCallback((url: string) => {
     try {
       const parsed = new URL(url, window.location.origin);
-      return PROTECTED_PATHS.some((path) => parsed.pathname.startsWith(path));
+      const result = PROTECTED_PATHS.some((path) => parsed.pathname.startsWith(path));
+      console.log("[isProtectedPath]", url, "->", parsed.pathname, "->", result);
+      return result;
     } catch {
+      console.log("[isProtectedPath] Failed to parse URL:", url);
       return false;
     }
   }, []);
 
   const promptPassword = useCallback(async (pathKey: string): Promise<boolean> => {
     if (passwordCache.current.get(pathKey)) {
+      console.log("[promptPassword] Cached authorization for:", pathKey);
       return true;
     }
+
+    console.log("[promptPassword] Prompting for password for:", pathKey);
 
     return new Promise((resolve) => {
       const password = window.prompt(
@@ -36,6 +42,8 @@ export function useProtectedFetch() {
         ""
       );
       
+      console.log("[promptPassword] Password entered:", password === "blocked" ? "correct" : "incorrect/empty");
+
       if (password === "blocked") {
         passwordCache.current.set(pathKey, true);
         toast({
@@ -59,8 +67,11 @@ export function useProtectedFetch() {
       const url = typeof input === "string" ? input : input.toString();
       const method = (init?.method || "GET").toUpperCase();
 
+      console.log("[protectedFetch]", method, url);
+
       if (MUTATING_METHODS.includes(method) && isProtectedPath(url)) {
         const pathKey = PROTECTED_PATHS.find((p) => url.includes(p)) || url;
+        console.log("[protectedFetch] Protected path matched:", pathKey);
         const authorized = await promptPassword(pathKey);
         if (!authorized) {
           throw new Error("Protected action cancelled: incorrect password");
@@ -82,12 +93,16 @@ export async function protectedFetchGlobal(
   const url = typeof input === "string" ? input : input.toString();
   const method = (init?.method || "GET").toUpperCase();
 
+  console.log("[protectedFetchGlobal]", method, url);
+
   if (MUTATING_METHODS.includes(method) && PROTECTED_PATHS.some((p) => url.includes(p))) {
     const pathKey = PROTECTED_PATHS.find((p) => url.includes(p)) || url;
+    console.log("[protectedFetchGlobal] Protected path matched:", pathKey);
     const password = window.prompt(
       `🔐 Protected action detected on ${pathKey}\nEnter password to proceed:`,
       ""
     );
+    console.log("[protectedFetchGlobal] Password entered:", password === "blocked" ? "correct" : "incorrect/empty");
     
     if (password !== "blocked") {
       throw new Error("Protected action cancelled: incorrect password");
