@@ -4,7 +4,7 @@
 This feature adds a password prompt before any mutating HTTP request (POST, PUT, PATCH, DELETE) to protected API endpoints.
 
 ## Current Status
-**DISABLED** - Set `ENABLED = true` in `hooks/useProtectedFetch.ts` to enable.
+**ENABLED** - Set `ENABLED = false` in `hooks/useProtectedFetch.ts` to disable.
 
 ## Configuration
 
