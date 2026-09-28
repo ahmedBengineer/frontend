@@ -17,7 +17,8 @@ import CustomToolsForm from "@/components/CustomToolsForm"
 import { WorkflowTestPanel } from "@/components/workflow-test/WorkflowTestPanel"
 import { DialogTrigger } from "@/components/ui/dialog"
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Settings, User, MessageSquare, Target } from 'lucide-react'
+import { Settings, User, MessageSquare, Target, Lock } from 'lucide-react'
+import { useProtectedFetch } from '@/hooks/useProtectedFetch'
 
 
 import {
@@ -61,6 +62,7 @@ type DefaultTool = typeof DEFAULT_TOOLS[number]
 
 function ToolsTab({ agentId }: { agentId: string }) {
   const { toast } = useToast()
+  const { protectedFetch } = useProtectedFetch()
   const [companyNumbers, setCompanyNumbers] = useState<string[]>([])
   const [assignedNumbers, setAssignedNumbers] = useState<string[]>([])
   const [originalNumbers, setOriginalNumbers] = useState<string[]>([])
@@ -141,7 +143,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
 
         const updatedIds = updatedObjects.map((t) => String(t.id))
 
-        const res = await fetch(
+        const res = await protectedFetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
           {
             method: "PATCH",
@@ -163,6 +165,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
           description: `Tool ${isAssigned ? "unassigned" : "assigned"} successfully.`,
         })
       } catch (error: any) {
+        if (error.message.includes("Protected action cancelled")) return
         toast({
           title: "Error",
           description: error.message || "Failed to update tools.",
@@ -336,7 +339,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
 
       setAssignedNumbers(updated)
 
-      const res = await fetch(
+      const res = await protectedFetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
         {
           method: "PATCH",
@@ -357,6 +360,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
 
       await fetchAgentAndCompany()
     } catch (error: any) {
+      if (error.message.includes("Protected action cancelled")) return
       toast({
         title: "Error",
         description: error.message || "Failed to update numbers.",
@@ -369,7 +373,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
 
   const handleSave = async () => {
     try {
-      const res = await fetch(
+      const res = await protectedFetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
         {
           method: "PATCH",
@@ -389,6 +393,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
       })
       await fetchAgentAndCompany()
     } catch (error: any) {
+      if (error.message.includes("Protected action cancelled")) return
       toast({
         title: "Error",
         description: error.message || "Failed to update numbers.",
@@ -406,7 +411,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
   const handleSaveDefaultTools = async () => {
     setUpdatingDefaultTools(true)
     try {
-      const res = await fetch(
+      const res = await protectedFetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
         {
           method: "PATCH",
@@ -428,6 +433,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
       toast({ title: "Default Tools Updated", description: "Agent default tools have been saved." })
       setShowDefaultToolsDialog(false)
     } catch (error: any) {
+      if (error.message.includes("Protected action cancelled")) return
       toast({
         title: "Error",
         description: error.message || "Failed to update default tools.",
@@ -494,7 +500,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
         ...startupToolCalls,
         [selectedStartupTool.name]: startupFormValues,
       }
-      const res = await fetch(
+      const res = await protectedFetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
         {
           method: "PATCH",
@@ -513,6 +519,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
       setStartupFormValues({})
       setStartupStep("list")
     } catch (error: any) {
+      if (error.message.includes("Protected action cancelled")) return
       toast({ title: "Error", description: error.message || "Failed to save startup tool.", variant: "destructive" })
     } finally {
       setSavingStartupTools(false)
@@ -524,7 +531,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
     try {
       const updated = { ...startupToolCalls }
       delete updated[toolName]
-      const res = await fetch(
+      const res = await protectedFetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/${agentId}/`,
         {
           method: "PATCH",
@@ -539,6 +546,7 @@ function ToolsTab({ agentId }: { agentId: string }) {
       setStartupToolCalls(updated)
       toast({ title: "Removed", description: `"${toolName}" removed from startup calls.` })
     } catch (error: any) {
+      if (error.message.includes("Protected action cancelled")) return
       toast({ title: "Error", description: error.message || "Failed to remove startup tool.", variant: "destructive" })
     } finally {
       setRemovingStartupTool(null)

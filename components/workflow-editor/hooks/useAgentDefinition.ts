@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import { deepEqual } from "../utils/jsonPath";
 import { normalizeDefaultRouterTools } from "@/lib/workflow-studio/defaultTools";
+import { protectedFetchGlobal } from "@/hooks/useProtectedFetch";
 
 function normalizeDefinition(
   data: Record<string, unknown>,
@@ -103,7 +104,7 @@ export function useAgentDefinition(
 
   const fetchRawAgent = useCallback(async () => {
     if (!agentId) throw new Error("Choose a workflow agent");
-    const response = await fetch(`/api/workflow-studio/agents/${agentId}`, {
+    const response = await protectedFetchGlobal(`/api/workflow-studio/agents/${agentId}`, {
       cache: "no-store",
     });
     if (!response.ok) {
@@ -200,7 +201,7 @@ export function useAgentDefinition(
     [],
   );
 
-  const save = useCallback(
+const save = useCallback(
     async (method: SaveMethod = "PATCH", force = false) => {
       if (!agentId || !savedState) return false;
       setIsSaving(true);
@@ -222,7 +223,7 @@ export function useAgentDefinition(
             );
           }
         }
-        const response = await fetch(`/api/workflow-studio/agents/${agentId}`, {
+        const response = await protectedFetchGlobal(`/api/workflow-studio/agents/${agentId}`, {
           method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -254,6 +255,10 @@ export function useAgentDefinition(
         successTimer.current = setTimeout(() => setSaveSuccess(false), 3000);
         return true;
       } catch (reason) {
+        if (reason instanceof Error && reason.message.includes("Protected action cancelled")) {
+          setSaveError("Save cancelled: password required");
+          return false;
+        }
         setSaveError(reason instanceof Error ? reason.message : "Save failed");
         return false;
       } finally {

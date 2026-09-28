@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { X, Plus, Trash2, ChevronRight, ChevronLeft, FileJson, Braces, Settings2, Globe, ListChecks, Layers, Send, Wrench } from "lucide-react"
+import { useProtectedFetch } from "@/hooks/useProtectedFetch"
 
 // Step types — now 8 steps
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
@@ -246,6 +247,7 @@ function ParameterCard({
 
 export default function CustomToolsForm({ tool, onSuccess }: { tool?: any; onSuccess?: () => void }) {
   const { toast } = useToast()
+  const { protectedFetch } = useProtectedFetch()
   const [step, setStep] = useState<Step>(1)
 
   const stepConfig: { key: Step; label: string; icon: any }[] = [
@@ -481,7 +483,7 @@ export default function CustomToolsForm({ tool, onSuccess }: { tool?: any; onSuc
         ? `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/${tool.id}/`
         : `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/`
 
-      const res = await fetch(url, {
+      const res = await protectedFetch(url, {
         method: tool ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
         body: JSON.stringify(payload),
@@ -500,7 +502,8 @@ export default function CustomToolsForm({ tool, onSuccess }: { tool?: any; onSuc
       setStep(1)
       onSuccess?.()
       toast({ title: "Success", description: tool ? "Custom tool updated!" : "Custom tool created!" })
-    } catch (err) {
+    } catch (err: any) {
+      if (err.message?.includes("Protected action cancelled")) return
       console.error("Submit failed", err)
       toast({ variant: "destructive", title: "Error", description: "Could not save tool." })
     }

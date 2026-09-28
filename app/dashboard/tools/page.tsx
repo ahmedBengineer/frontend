@@ -387,6 +387,7 @@ import {
 import CustomToolsForm from "@/components/CustomToolsForm"
 import { Clipboard } from "lucide-react"
 import { ListPageSkeleton } from "@/components/page-skeletons"
+import { useProtectedFetch } from "@/hooks/useProtectedFetch"
 
 
 function jsonPretty(obj: any) {
@@ -427,6 +428,7 @@ function MethodBadge({ method }: { method: string }) {
 
 export default function ToolsPage() {
   const { toast } = useToast()
+  const { protectedFetch } = useProtectedFetch()
   const [showDialog, setShowDialog] = useState(false)
   const [viewTool, setViewTool] = useState<any>(null)
   const [editTool, setEditTool] = useState<any>(null)
@@ -575,7 +577,7 @@ useEffect(() => {
   // Delete tool
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(
+      const res = await protectedFetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/custom_feature/custom-features/${id}/`,
         {
           method: "DELETE",
@@ -591,7 +593,8 @@ useEffect(() => {
 
       toast({ title: "Deleted", description: "Tool removed successfully." })
       setRefreshKey((prev) => prev + 1)
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes("Protected action cancelled")) return
       console.error("Delete error:", error)
       toast({
         title: "Error",

@@ -1134,6 +1134,7 @@ function FAQTab({ agentId }: { agentId: string }) {
   const [docs, setDocs] = useState<any[]>([])
   const [newQuestion, setNewQuestion] = useState("")
   const [newAnswer, setNewAnswer] = useState("")
+  const [newIsPublished, setNewIsPublished] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -1144,7 +1145,6 @@ function FAQTab({ agentId }: { agentId: string }) {
 
   const { toast } = useToast()
   
-
 
 
   const [scrapWebsites, setScrapWebsites] = useState<string[]>([])
@@ -1250,9 +1250,11 @@ function FAQTab({ agentId }: { agentId: string }) {
 
   const fetchFAQs = async () => {
     try {
-      const response = await fetch(`/api/agents/${agentId}/faqs`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/faq/faqs/?agent_id=${agentId}&parent=none`, {
+        headers: { Authorization: `Token ${token}` }
+      })
       const data = await response.json()
-      setFaqs(data)
+      setFaqs(Array.isArray(data) ? data : data?.results ?? [])
     } catch (error) {
       console.error("Error fetching FAQs:", error)
     }
@@ -1339,14 +1341,23 @@ function FAQTab({ agentId }: { agentId: string }) {
   const handleAddFAQ = async () => {
     if (!newQuestion.trim() || !newAnswer.trim()) return
     try {
-      const res = await fetch(`/api/agents/${agentId}/faqs`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/faq/faqs/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: newQuestion, answer: newAnswer })
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Token ${token}`
+        },
+        body: JSON.stringify({ 
+          question: newQuestion, 
+          answer: newAnswer,
+          is_published: newIsPublished,
+          agent_id: Number(agentId)
+        })
       })
       if (res.ok) {
         setNewQuestion("")
         setNewAnswer("")
+        setNewIsPublished(true)
         setShowAddForm(false)
         fetchFAQs()
       }
@@ -1357,7 +1368,10 @@ function FAQTab({ agentId }: { agentId: string }) {
 
   const handleDeleteFAQ = async (id: string) => {
     try {
-      const res = await fetch(`/api/agents/${agentId}/faqs/${id}`, { method: "DELETE" })
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/faq/faqs/${id}/`, { 
+        method: "DELETE",
+        headers: { Authorization: `Token ${token}` }
+      })
       if (res.ok) fetchFAQs()
     } catch (err) {
       console.error("Error deleting FAQ:", err)
@@ -1388,7 +1402,7 @@ function FAQTab({ agentId }: { agentId: string }) {
     }
   }
 
-  if (loading) return <div className="text-center p-10 text-slate-600">Loading FAQ data...</div>
+if (loading) return <div className="text-center p-10 text-slate-600">Loading FAQ data...</div>
 
   return (
     <div className="space-y-6">
@@ -1504,7 +1518,91 @@ function FAQTab({ agentId }: { agentId: string }) {
   </DialogContent>
 </Dialog>
 
+      {/* FAQ List */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">FAQs</h2>
+          <Button 
+            onClick={() => setShowAddForm(true)} 
+            className="bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Add FAQ
+          </Button>
+        </div>
 
+        {/* Add FAQ Form */}
+        {showAddForm && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Question</label>
+              <Textarea 
+                value={newQuestion} 
+                onChange={(e) => setNewQuestion(e.target.value)} 
+                placeholder="Enter the question..."
+                rows={2}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Answer</label>
+              <Textarea 
+                value={newAnswer} 
+                onChange={(e) => setNewAnswer(e.target.value)} 
+                placeholder="Enter the answer..."
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newIsPublished}
+                  onChange={(e) => setNewIsPublished(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span>Published (visible to users)</span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => { setShowAddForm(false); setNewQuestion(""); setNewAnswer(""); setNewIsPublished(true); }}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddFAQ} className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+                Save FAQ
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* FAQ List */}
+        {faqs.length === 0 ? (
+          <p className="text-slate-500 text-center py-8">No FAQs yet. Click "Add FAQ" to create your first one.</p>
+        ) : (
+          <ul className="space-y-3">
+            {faqs.map((faq: any) => (
+              <li key={faq.id} className="flex items-start justify-between gap-3 p-4 rounded-lg border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-medium text-slate-900">{faq.question}</p>
+                    {!faq.is_published && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-600 border border-amber-200">
+                        Draft
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-500 line-clamp-2">{faq.answer}</p>
+                </div>
+                <button
+                  onClick={() => handleDeleteFAQ(faq.id)}
+                  className="flex-shrink-0 p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  title="Delete FAQ"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {successMessage && <div className="p-4 bg-green-50 border border-green-200 text-green-700">{successMessage}</div>}
       {errorMessage && <div className="p-4 bg-red-50 border border-red-200 text-red-700">{errorMessage}</div>}
@@ -1558,7 +1656,6 @@ function FAQTab({ agentId }: { agentId: string }) {
         </div>
       </div>
 
-  
     </div>
   )
 }
