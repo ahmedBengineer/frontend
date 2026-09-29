@@ -12,3 +12,10 @@ pnpm-debug.log*
 .env*.local
 .vscode
 .idea
+__tests__
+agent_definition.json
+eslint_out.txt
+tsc_err.txt
+tsconfig.tsbuildinfo
+smoke-*.cjs
+.DS_Store

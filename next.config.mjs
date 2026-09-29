@@ -6,6 +6,12 @@ const nextConfig = {
     ...(process.env.NEXT_BUILD_CPUS
       ? { cpus: parseInt(process.env.NEXT_BUILD_CPUS, 10) || 1 }
       : {}),
+    // lucide-react is already handled by Next's built-in optimizePackageImports defaults.
+    optimizePackageImports: ["recharts", "framer-motion", "date-fns"],
+  },
+  serverExternalPackages: ["livekit-server-sdk", "@livekit/protocol", "libphonenumber-js"],
+  outputFileTracingExcludes: {
+    "*": ["**/*.test.ts", "**/*.test.tsx", "__tests__/**"],
   },
   eslint: {
     ignoreDuringBuilds: true,

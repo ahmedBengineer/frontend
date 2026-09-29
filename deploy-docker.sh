@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Required for the Dockerfile's --mount=type=cache layers (npm + .next/cache).
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
 branch="${1:?Usage: deploy-docker.sh <branch>}"
 minimum_free_gb="${DOCKER_MIN_FREE_GB:-4}"
 image_name="${DOCKER_IMAGE_NAME:-pentagon-frontend:latest}"
