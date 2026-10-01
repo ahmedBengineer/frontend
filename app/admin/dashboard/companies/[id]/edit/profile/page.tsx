@@ -20,7 +20,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Calendar, Users, CreditCard, Globe, Mail, Phone, MapPin, Building, Trash2, Save } from "lucide-react"
+import { Calendar, Users, CreditCard, Globe, Mail, Phone, MapPin, Building, Trash2, Save, Lock } from "lucide-react"
 
 export default function EditCompanyProfile() {
   const { id: companyId } = useParams()
