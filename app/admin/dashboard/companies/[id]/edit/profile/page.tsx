@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Cookies from "js-cookie"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
