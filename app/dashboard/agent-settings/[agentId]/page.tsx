@@ -16,9 +16,10 @@ import { UploadCloud, Loader2 } from "lucide-react"
 import CustomToolsForm from "@/components/CustomToolsForm"
 import { WorkflowTestPanel } from "@/components/workflow-test/WorkflowTestPanel"
 import { DialogTrigger } from "@/components/ui/dialog"
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Settings, User, MessageSquare, Target, Lock } from 'lucide-react'
 import { useProtectedFetch } from '@/hooks/useProtectedFetch'
+import PasswordPrompt from "@/components/password-prompt"
+import { useRouter, useSearchParams } from 'next/navigation';
 
 
 import {
@@ -62,7 +63,23 @@ type DefaultTool = typeof DEFAULT_TOOLS[number]
 
 function ToolsTab({ agentId }: { agentId: string }) {
   const { toast } = useToast()
-  const { protectedFetch } = useProtectedFetch()
+  const passwordVerified = useRef(false)
+  const { protectedFetch } = useProtectedFetch((pathKey) => {
+    passwordVerified.current = false
+    setPasswordDialogOpen(true)
+    return new Promise((resolve) => {
+      // The PasswordPrompt component will verify and set passwordVerified.current = true
+    })
+  })
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+
+  // Watch for password verification from the PasswordPrompt component
+  useEffect(() => {
+    if (passwordVerified.current) {
+      setPasswordDialogOpen(false)
+      passwordVerified.current = false
+    }
+  }, [passwordVerified.current])
   const [companyNumbers, setCompanyNumbers] = useState<string[]>([])
   const [assignedNumbers, setAssignedNumbers] = useState<string[]>([])
   const [originalNumbers, setOriginalNumbers] = useState<string[]>([])
@@ -95,8 +112,6 @@ function ToolsTab({ agentId }: { agentId: string }) {
   const [removingStartupTool, setRemovingStartupTool] = useState<string | null>(null)
   const [startupSearch, setStartupSearch] = useState("")
   const [startupMethodFilter, setStartupMethodFilter] = useState<string>("all")
-
-  // ===========================
   // Tools List Component
   // ===========================
   function ToolsList() {

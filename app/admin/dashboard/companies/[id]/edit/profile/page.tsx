@@ -66,11 +66,11 @@ export default function EditCompanyProfile() {
           "Content-Type": "application/json",
           Authorization: `Token ${token || ""}`
         },
-        body: JSON.stringify({ status: companyData.status })
+        body: JSON.stringify({ status: companyData.status, password: companyData.password })
       })
-      alert("Status updated successfully!")
+      alert("Company updated successfully!")
     } catch (err) {
-      console.error("Failed to update status", err)
+      console.error("Failed to update company", err)
     }
   }
 
@@ -225,11 +225,16 @@ export default function EditCompanyProfile() {
               <div className="group">
                 <div className="flex items-center gap-2 mb-1.5">
                   <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
-                    <Users className="h-3 w-3 text-slate-500" />
+                    <Lock className="h-3 w-3 text-slate-500" />
                   </div>
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Size</span>
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Password</span>
                 </div>
-                <p className="text-sm text-slate-700 pl-8">{companyData.company_size ? `${companyData.company_size} employees` : "—"}</p>
+                <Input
+                  type="password"
+                  value={companyData.password || ""}
+                  onChange={(e) => setCompanyData((prev) => ({ ...prev, password: e.target.value }))}
+                  className="w-full rounded-xl border-slate-200 py-2.5 px-3 text-sm focus-visible:ring-slate-900/20 transition-colors pl-8"
+                />
               </div>
             </div>
 

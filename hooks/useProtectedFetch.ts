@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 /*
@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
  * To ENABLE: Set ENABLED = true
  * To DISABLE: Set ENABLED = false
  * 
- * Password: "blocked"
+ * Password: Set per-company from admin panel (defaults to "blocked")
  * Protected paths: /api/workflow-studio/agents/, /api/workflow-test/, /api/agents/agents/, /api/custom_feature/custom-features/
  * Protected methods: POST, PUT, PATCH, DELETE
  */
@@ -25,7 +25,7 @@ const PROTECTED_PATHS = [
 
 const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 
-export function useProtectedFetch() {
+export function useProtectedFetch(customPrompt?: (pathKey: string) => Promise<boolean>) {
   const { toast } = useToast();
   const passwordCache = useRef<Map<string, boolean>>(new Map());
 
@@ -37,12 +37,18 @@ export function useProtectedFetch() {
     } catch {
       return false;
     }
-  }, []);
+  }, [ENABLED]);
 
   const promptPassword = useCallback(async (pathKey: string): Promise<boolean> => {
     if (!ENABLED) return true;
     if (passwordCache.current.get(pathKey)) return true;
 
+    // Use custom prompt function if provided (for pretty modal integration)
+    if (customPrompt) {
+      return customPrompt(pathKey);
+    }
+
+    // Fallback to window.prompt
     return new Promise((resolve) => {
       const password = window.prompt(
         `🔐 Protected action detected on ${pathKey}\nEnter password to proceed:`,
@@ -65,7 +71,7 @@ export function useProtectedFetch() {
         resolve(false);
       }
     });
-  }, [toast]);
+  }, [customPrompt]);
 
   const protectedFetch = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

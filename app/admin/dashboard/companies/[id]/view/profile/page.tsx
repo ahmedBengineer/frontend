@@ -184,8 +184,16 @@ export default function ViewCompanyProfile() {
                 <p className="text-base text-slate-700">{companyData.industry}</p>
               </div>
               <div className="space-y-1.5">
-                <span className="text-xs font-medium text-slate-500">Company Size</span>
-                <p className="text-base text-slate-700">{companyData.company_size} employees</p>
+                <span className="text-xs font-medium text-slate-500">Company Password</span>
+                <p className="text-base text-slate-700">{companyData.password ? "•••••••• set" : "Not set"}</p>
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-xs font-medium text-slate-500">Password Status</span>
+                <p className="text-sm text-slate-500">{companyData.password ? "Password is set and will be used for protected actions" : "No password set - using default 'blocked'"}</p>
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-xs font-medium text-slate-500">Company Password</span>
+                <p className="text-base text-slate-700">{companyData.password ? "•••••••• set" : "Not set"}</p>
               </div>
             </div>
             <div className="space-y-1.5">

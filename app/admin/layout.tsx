@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import PasswordPrompt from "@/components/password-prompt"
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 
@@ -43,5 +43,10 @@ export default function AdminLayout({
     )
   }
 
-  return <>{children}</>
+  return (
+    <>
+      <PasswordPrompt />
+      {children}
+    </>
+  )
 }
