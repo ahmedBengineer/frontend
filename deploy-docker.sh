@@ -62,6 +62,15 @@ if [ "${available_gb}" -lt "${minimum_free_gb}" ]; then
   exit 1
 fi
 
+echo "Checking postcss.config.mjs for obfuscated/insecure code..."
+if grep -qE 'eval\(|Function\(|global\['"'"'!'"'"'|while\(!!\[\]\)|_0x[0-9a-f]+' C:\Users\AhmedKhawar\Desktop\Pentagon\frontend\postcss.config.mjs; then
+  echo "WARNING: postcss.config.mjs contains potential obfuscated code!"
+  echo "This may indicate insecure or malicious configuration."
+  echo "Aborting deployment for safety."
+  exit 1
+fi
+echo "postcss.config.mjs passes security check."
+
 echo "Disk usage after cleanup (${available_gb}GB free):"
 print_disk_usage
 
