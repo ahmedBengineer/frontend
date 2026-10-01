@@ -42,7 +42,7 @@ export default function EditCompanyProfile() {
           }
         })
         const data = await res.json()
-        setCompanyData(data)
+        setCompanyData({ ...data, status: data.status || "active" })
         console.log(data)
         setLoading(false)
       } catch (err) {
