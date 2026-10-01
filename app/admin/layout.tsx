@@ -45,8 +45,8 @@ export default function AdminLayout({
 
   return (
     <>
-      {/*<PasswordPrompt />*/}
-      {/*{children}*/}
+      <PasswordPrompt />
+      {children}
     </>
   )
 }
