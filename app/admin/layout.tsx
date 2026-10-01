@@ -43,9 +43,22 @@ export default function AdminLayout({
     )
   }
 
+  const handleVerify = (password: string) => {
+    if (password === "blocked") {
+      localStorage.setItem("adminAuth", "true")
+      setIsAuthenticated(true)
+    }
+  }
+
+  const handleClose = () => {
+    router.push("/admin")
+  }
+
   return (
     <>
-      {!isAuthenticated && !loading && pathname !== "/admin" && <PasswordPrompt />}
+      {!isAuthenticated && !loading && pathname !== "/admin" && (
+        <PasswordPrompt onVerify={handleVerify} onClose={handleClose} pathKey={pathname} />
+      )}
       {children}
     </>
   )
