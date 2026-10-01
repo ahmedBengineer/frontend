@@ -45,7 +45,7 @@ export default function AdminLayout({
 
   return (
     <>
-      <PasswordPrompt />
+      {!isAuthenticated && !loading && <PasswordPrompt />}
       {children}
     </>
   )
