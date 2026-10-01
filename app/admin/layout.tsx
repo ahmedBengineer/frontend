@@ -45,7 +45,7 @@ export default function AdminLayout({
 
   return (
     <>
-      {!isAuthenticated && !loading && <PasswordPrompt />}
+      {!isAuthenticated && !loading && pathname !== "/admin" && <PasswordPrompt />}
       {children}
     </>
   )
