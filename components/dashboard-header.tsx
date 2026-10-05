@@ -1,84 +1,5 @@
 // "use client"
 
-// import { Bell, ChevronDown } from "lucide-react"
-// import { Button } from "@/components/ui/button"
-// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-// import { Badge } from "@/components/ui/badge"
-// import {
-//   DropdownMenu,
-//   DropdownMenuContent,
-//   DropdownMenuItem,
-//   DropdownMenuSeparator,
-//   DropdownMenuTrigger,
-// } from "@/components/ui/dropdown-menu"
-// import { useAuth } from "@/components/auth-provider"
-// import { useRouter } from "next/navigation"
-
-// export function DashboardHeader() {
-//   const { user, logout } = useAuth()
-//   const router = useRouter()
-
-//   const handleLogout = () => {
-//     logout()
-//     router.push("/login")
-//   }
-
-//   return (
-//     <header className="bg-white border-b border-slate-200 px-6 py-4">
-//       <div className="flex items-center justify-between">
-//         <div className="flex items-center space-x-2">
-//           <h1 className="text-2xl font-semibold text-slate-800">Dashboard</h1>
-//         </div>
-
-//         <div className="flex items-center space-x-4">
-//           <div className="flex items-center space-x-2">
-//             <span className="text-sm text-slate-600">Active Agent:</span>
-//             <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-//               Primary
-//             </Badge>
-//           </div>
-
-//           <Button variant="ghost" size="icon" className="relative">
-//             <Bell className="w-5 h-5 text-slate-600" />
-//             <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-//           </Button>
-
-//           <DropdownMenu>
-//             <DropdownMenuTrigger asChild>
-//               <Button variant="ghost" className="flex items-center space-x-2 px-3">
-//                 <Avatar className="w-8 h-8">
-//                   <AvatarImage src="/placeholder-user.jpg" />
-//                   <AvatarFallback className="bg-teal-100 text-teal-700">{user?.name?.charAt(0) || "U"}</AvatarFallback>
-//                 </Avatar>
-//                 <span className="text-sm text-slate-700">{user?.email}</span>
-//                 <ChevronDown className="w-4 h-4 text-slate-500" />
-//               </Button>
-//             </DropdownMenuTrigger>
-//             <DropdownMenuContent align="end" className="w-56">
-//               <DropdownMenuItem>
-//                 <span>Profile</span>
-//               </DropdownMenuItem>
-//               <DropdownMenuItem>
-//                 <span>Settings</span>
-//               </DropdownMenuItem>
-//               <DropdownMenuSeparator />
-//               <DropdownMenuItem onClick={handleLogout}>
-//                 <span>Sign out</span>
-//               </DropdownMenuItem>
-//             </DropdownMenuContent>
-//           </DropdownMenu>
-//         </div>
-//       </div>
-//     </header>
-//   )
-// }
-
-
-
-
-
-"use client"
-
 
 import { useEffect, useState } from "react"
 import { Bell, ChevronDown } from "lucide-react"
@@ -96,7 +17,7 @@ import { useAuth } from "@/components/auth-provider"
 import { useRouter } from "next/navigation"
 import Cookies from "js-cookie"
 import { useToast } from "@/hooks/use-toast"
-
+import { useNavbarTabs } from "@/hooks/use-navbar-tabs"
 
 interface ActionLog {
   id: number
@@ -114,7 +35,7 @@ const colorThemes = [
 { name: 'coral', gradient: 'from-orange-500 via-red-400 to-orange-500', bg: 'from-orange-300/10 via-red-300/5 to-rose-300/10', radial: 'rgba(249,115,22,0.1)' },
 { name: 'gold', gradient: 'from-yellow-500 via-amber-500 to-yellow-500', bg: 'from-yellow-400/10 via-amber-400/5 to-orange-400/10', radial: 'rgba(234,179,8,0.1)' },
 { name: 'sky', gradient: 'from-sky-400 via-blue-300 to-sky-400', bg: 'from-sky-300/10 via-blue-200/5 to-cyan-300/10', radial: 'rgba(56,189,248,0.1)' },
-{ name: 'lavender', gradient: 'from-purple-300 via-violet-300 to-purple-300', bg: 'from-purple-200/10 via-violet-200/5 to-fuchsia-200/10', radial: 'rgba(216,180,254,0.1)' },
+{ name: 'lavender', gradient: 'from-purple-300 via-violet-300 to-purple-200/10 via-violet-200/5 to-fuchsia-200/10', radial: 'rgba(216,180,254,0.1)' },
 { name: 'salmon', gradient: 'from-rose-400 via-pink-400 to-rose-400', bg: 'from-rose-300/10 via-pink-300/5 to-orange-200/10', radial: 'rgba(251,113,133,0.1)' },
 { name: 'lime', gradient: 'from-lime-400 via-green-400 to-lime-400', bg: 'from-lime-300/10 via-green-300/5 to-emerald-300/10', radial: 'rgba(163,230,53,0.1)' },
 ]
@@ -124,132 +45,18 @@ export function DashboardHeader() {
   const { user, logout } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const { tabs: visibleTabs, loading: tabsLoading } = useNavbarTabs()
 
-
-  const [primaryAgentName, setPrimaryAgentName] = useState<string | null>(null)
-  const [logs, setLogs] = useState<ActionLog[]>([])
-  const [displayedText, setDisplayedText] = useState("")
-  const [userName, setUserName] = useState("")
-  const [currentThemeIndex, setCurrentThemeIndex] = useState(0)
-
-
-  // Fetch user name from localStorage
+  // Build visible tab paths set (with caching)
+  const [visibleTabPaths, setVisibleTabPaths] = useState<Set<string>>(new Set())
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUser = localStorage.getItem("user")
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser)
-          setUserName(userData.name || "User")
-        } catch {
-          setUserName("User")
-        }
-      } else {
-        setUserName("User")
-      }
+    if (visibleTabPaths.size === 0 && !localStorage.getItem("header_tab_paths")) {
+      const paths = visibleTabs.map((tab) => tab.url_path).filter(Boolean)
+      const pathsSet = new Set(paths)
+      localStorage.setItem("header_tab_paths", JSON.stringify(paths))
+      setVisibleTabPaths(pathsSet)
     }
-  }, [])
-
-
-  // Typewriter effect
-  useEffect(() => {
-    if (!userName) return
-    
-    const fullText = `Welcome ${userName}`
-    let index = 0
-    
-    const timer = setInterval(() => {
-      if (index <= fullText.length) {
-        setDisplayedText(fullText.slice(0, index))
-        index++
-      } else {
-        clearInterval(timer)
-      }
-    }, 80)
-
-
-    return () => clearInterval(timer)
-  }, [userName])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentThemeIndex((prev) => (prev + 1) % colorThemes.length)
-    }, 50000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-
-  // Fetch Primary Agent
-  useEffect(() => {
-    const fetchAgents = async () => {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/agents/agents/`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${Cookies.get("Token") || ""}`,
-          },
-        })
-
-
-        if (!res.ok) throw new Error("Failed to fetch agents")
-        const data = await res.json()
-
-
-        const agentList = Array.isArray(data) ? data : data?.results ?? []
-        if (agentList.length) {
-          const primaryAgent = agentList.find((agent: any) => agent.primary === true)
-          if (primaryAgent) setPrimaryAgentName(primaryAgent.name)
-        }
-      } catch (err: any) {
-        toast({
-          title: "Error",
-          description: err.message || "Failed to fetch agents",
-          variant: "destructive",
-        })
-      }
-    }
-
-
-    fetchAgents()
-  }, [toast])
-
-
-  // Fetch Logs
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/reports/action-logs/`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${Cookies.get("Token") || ""}`,
-          },
-        })
-
-
-        if (!res.ok) throw new Error("Failed to fetch logs")
-        const data = await res.json()
-
-
-        // Sort by timestamp (latest first) and take top 5
-        const list = Array.isArray(data) ? data : data?.results ?? []
-        const sortedLogs = [...list].sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        )
-        setLogs(sortedLogs.slice(0, 5))
-      } catch (err: any) {
-        toast({
-          title: "Error",
-          description: err.message || "Failed to fetch logs",
-          variant: "destructive",
-        })
-      }
-    }
-
-
-    fetchLogs()
-  }, [toast])
-
+  }, [visibleTabs])
 
   const handleLogout = () => {
     Cookies.remove("Token")
@@ -259,11 +66,9 @@ export function DashboardHeader() {
     localStorage.removeItem("userAuth")
     localStorage.removeItem("loginType")
 
-
     logout()
     router.push("/login")
   }
-
 
   const handleAccountSettings = () => {
     router.push("/dashboard/account-settings/personal-settings")
@@ -273,6 +78,7 @@ export function DashboardHeader() {
   const handleBilling = () => {
     router.push("/billing")
   }
+
 
   const currentTheme = colorThemes[currentThemeIndex]
 
@@ -353,8 +159,8 @@ export function DashboardHeader() {
                                   log.action === "create"
                                     ? "bg-emerald-100 text-emerald-700"
                                     : log.action === "delete"
-                                    ? "bg-rose-100 text-rose-700"
-                                    : "bg-slate-100 text-slate-700"
+                                      ? "bg-rose-100 text-rose-700"
+                                      : "bg-slate-100 text-slate-700"
                                 }`}
                               >
                                 {log.action}
@@ -406,12 +212,14 @@ export function DashboardHeader() {
                     <DropdownMenuItem 
                       onClick={handleBilling}
                       className="px-3 py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                      disabled={!visibleTabPaths.has("/billing")}
                     >
                       <span className="text-sm font-medium text-slate-700">Billings</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={handleAccountSettings}
                       className="px-3 py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                      disabled={!visibleTabPaths.has("/dashboard/account-settings/personal-settings")}
                     >
                       <span className="text-sm font-medium text-slate-700">Settings</span>
                     </DropdownMenuItem>
