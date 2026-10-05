@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { Mail, CheckCircle, Copy, UserPlus, Users, Shield, Clock, Calendar } from "lucide-react"
 import Cookies from "js-cookie"
 import { Loader2 } from "lucide-react"
+import { useNavbarTabs } from "@/hooks/use-navbar-tabs"
 
 
 
@@ -88,6 +89,7 @@ export default function UsersPage() {
     lastName: "",
     email: "",
     role: "member" as "admin" | "member",
+    tabs_visibility: [] as string[],
   })
   const [otp, setOtp] = useState("")
   const [otpSent, setOtpSent] = useState(false)
@@ -580,8 +582,37 @@ export default function UsersPage() {
                             <SelectItem value="member">Member</SelectItem>
                           </SelectContent>
                         </Select>
+                    {otpVerified && (
+                      <div className="space-y-2">
+                        <Label htmlFor="tabs" className="text-sm font-light text-slate-700">
+                          Navbar Tabs
+                        </Label>
+                        <p className="text-xs text-slate-500 font-light mb-2">
+                          Select which navbar tabs this user can access.
+                        </p>
+                        <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                          {tabs.map((tab) => (
+                            <div key={tab.name} className="flex items-center gap-2 px-2 py-1 rounded border border-slate-200/50 hover:border-slate-400/50 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={newUserData.tabs_visibility.includes(tab.name)}
+                                onChange={(e) => {
+                                  const newTabs = newUserData.tabs_visibility.includes(tab.name)
+                                    ? newUserData.tabs_visibility.filter(t => t !== tab.name)
+                                    : [...newUserData.tabs_visibility, tab.name]
+                                  setNewUserData({ ...newUserData, tabs_visibility: newTabs })
+                                }}
+                                className="rounded border-primary focus-visible:ring-primary"
+                                name={tab.name}
+                                value={tab.name}
+                              />
+                              <span className="text-sm font-light text-slate-900">{tab.display_name}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
+                    <div className="flex justify-end mt-4">
                     <div className="flex justify-end mt-4">
                       <Button onClick={handleAddUserSubmit} disabled={!otpVerified || addUserLoading} className="rounded-xl bg-slate-900 hover:bg-slate-800">
                         {addUserLoading ? "Creating..." : "Create User"}
