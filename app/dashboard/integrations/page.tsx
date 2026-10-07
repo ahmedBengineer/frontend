@@ -325,6 +325,7 @@ const integrationKeyMap: Record<string, string> = {
   hms: "hms",
   ginkoretail: "ginkoretail",
   gtech: "gtech",
+  leopards: "leopards",
 }
 
 const INTEGRATION_CHECK_KEYS = [
@@ -341,6 +342,7 @@ const INTEGRATION_CHECK_KEYS = [
   "postex",
   "ginkoretail",
   "gtech",
+  "leopards",
 ]
 
 const CONNECT_BUTTON_STYLE = "inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all duration-200 text-sm font-light shadow-sm shadow-slate-900/20"
@@ -448,6 +450,14 @@ function IntegrationLogo({ integration }: { integration: any }) {
       icon: (
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-blue-600">
           <path d="M19.4 12.9c-.5-.4-1.1-.7-1.7-.8V7c0-.6-.4-1-1-1h-3c-.6 0-1 .4-1 1v5.1c-.6.1-1.2.4-1.7.8-.5.4-.9.9-1.1 1.5l-2.3 4.9c-.2.5-.1 1.1.3 1.5.4.4 1 .5 1.5.3l4.9-2.3c.6-.3 1.1-.7 1.5-1.1.4-.4.7-.9.8-1.5l2.3-4.9c.2-.5.1-1.1-.3-1.5-.4-.4-1-.5-1.5-.3l-4.9 2.3zm-6.9 5.4c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm0-2c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4z"/>
+        </svg>
+      ),
+    },
+    leopards: {
+      bg: "bg-emerald-50", hover: "group-hover:bg-emerald-100",
+      icon: (
+        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-emerald-600">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-1v-.5c-1.71 0-3.37.54-4.8 1.52l.57 2.19c.66-.52 1.56-.83 2.56-.83 1.35 0 2.5.77 2.98 1.93l-.94 1.19c-.44-.6-1.16-.99-1.98-.99-.92 0-1.73.59-2.02 1.42h2v6.6h-2l.02.37c-.18.2-.36.4-.54.61-.37.4-.75.8-1.13 1.21-.23.25-.46.5-.69.75-.34.36-.68.72-1.01 1.09-.5.55-1 1.1-1.5 1.64v.37h12v-1c0-1.1-.9-2-2-2v-1.93c0 4.08-3.05 7.44-7 7.93z"/>
         </svg>
       ),
     },
@@ -607,6 +617,12 @@ export default function IntegrationsPage() {
       statusColor: "text-orange-600",
       isGtech: true,
     },
+    {
+      key: "leopards",
+      name: "Leopards Courier",
+      status: "Not Connected",
+      statusColor: "text-orange-600",
+    },
   ])
 
 
@@ -659,11 +675,17 @@ export default function IntegrationsPage() {
   const [ginkoretailConnecting, setGinkoRetailConnecting] = useState(false)
   const [ginkoretailDisconnecting, setGinkoRetailDisconnecting] = useState(false)
 
-  const [isGtechModalOpen, setIsGtechModalOpen] = useState(false)
-  const [gtechApiToken, setGtechApiToken] = useState("")
-  const [gtechBaseUrl, setGtechBaseUrl] = useState("https://monark.gtech-api.com")
-  const [gtechConnecting, setGtechConnecting] = useState(false)
-  const [gtechDisconnecting, setGtechDisconnecting] = useState(false)
+const [isGtechModalOpen, setIsGtechModalOpen] = useState(false)
+const [gtechApiToken, setGtechApiToken] = useState("")
+const [gtechBaseUrl, setGtechBaseUrl] = useState("https://monark.gtech-api.com")
+const [gtechConnecting, setGtechConnecting] = useState(false)
+const [gtechDisconnecting, setGtechDisconnecting] = useState(false)
+
+const [isLeopardsModalOpen, setIsLeopardsModalOpen] = useState(false)
+const [leopardsApiKey, setLeopardsApiKey] = useState("")
+const [leopardsApiPassword, setLeopardsApiPassword] = useState("")
+const [leopardsConnecting, setLeopardsConnecting] = useState(false)
+const [leopardsDisconnecting, setLeopardsDisconnecting] = useState(false)
 
 
 
@@ -862,6 +884,19 @@ export default function IntegrationsPage() {
         } catch { /* non-critical */ }
         setCheckingStatuses((prev) => ({ ...prev, gtech: false }))
 
+        // Fetch Leopards status
+        let leopardsStatus = "Not Connected"
+        try {
+          const leopardsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/leopards/status/`, {
+            headers: { "Content-Type": "application/json", Authorization: `Token ${Cookies.get("Token") || ""}` },
+          })
+          if (leopardsRes.ok) {
+            const leopardsData = await leopardsRes.json()
+            if (leopardsData.connected === true) leopardsStatus = "Connected"
+          }
+        } catch { /* non-critical */ }
+        setCheckingStatuses((prev) => ({ ...prev, leopards: false }))
+
         setIntegrations((prev) =>
   prev.map((integration) => {
     if (integration.key === "kitchenhub") {
@@ -921,6 +956,13 @@ export default function IntegrationsPage() {
         ...integration,
         status: gtechStatus,
         statusColor: gtechStatus === "Connected" ? "text-green-600" : "text-orange-600",
+      }
+    }
+    if (integration.key === "leopards") {
+      return {
+        ...integration,
+        status: leopardsStatus,
+        statusColor: leopardsStatus === "Connected" ? "text-green-600" : "text-orange-600",
       }
     }
     return {
@@ -1044,6 +1086,13 @@ export default function IntegrationsPage() {
       setGtechApiToken("")
       setGtechBaseUrl("https://monark.gtech-api.com")
       setIsGtechModalOpen(true)
+      return
+    }
+
+    if (integration.key === "leopards") {
+      setLeopardsApiKey("")
+      setLeopardsApiPassword("")
+      setIsLeopardsModalOpen(true)
       return
     }
 
@@ -1281,7 +1330,7 @@ export default function IntegrationsPage() {
     }
   }
 
-  const handleGtechDisconnect = async () => {
+const handleGtechDisconnect = async () => {
     setGtechDisconnecting(true)
     try {
       const token = Cookies.get("Token") || ""
@@ -1295,9 +1344,58 @@ export default function IntegrationsPage() {
       )
       toast({ description: "Gtech disconnected." })
     } catch (err: any) {
-      toast({ description: err.message || "Error disconnecting Gtech.", variant: "destructive" })
+      toast({ description: err.message || "Error connecting Gtech.", variant: "destructive" })
     } finally {
       setGtechDisconnecting(false)
+    }
+  }
+
+  const handleLeopardsConnect = async () => {
+    if (!leopardsApiKey.trim() || !leopardsApiPassword.trim()) {
+      toast({ description: "Please enter your Leopards API key and password.", variant: "destructive" })
+      return
+    }
+    setLeopardsConnecting(true)
+    try {
+      const token = Cookies.get("Token") || ""
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/leopards/connect/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
+        body: JSON.stringify({ api_key: leopardsApiKey.trim(), api_password: leopardsApiPassword.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || data?.detail || "Failed to connect Leopards.")
+      setIntegrations((prev) =>
+        prev.map((i) => i.key === "leopards" ? { ...i, status: "Connected", statusColor: "text-green-600" } : i)
+      )
+      toast({ description: "Leopards Courier connected successfully!" })
+      setIsLeopardsModalOpen(false)
+      setLeopardsApiKey("")
+      setLeopardsApiPassword("")
+    } catch (err: any) {
+      toast({ description: err.message || "Error connecting Leopards.", variant: "destructive" })
+    } finally {
+      setLeopardsConnecting(false)
+    }
+  }
+
+  const handleLeopardsDisconnect = async () => {
+    setLeopardsDisconnecting(true)
+    try {
+      const token = Cookies.get("Token") || ""
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/integrations/leopards/disconnect/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Token ${token}` },
+      })
+      if (!res.ok) throw new Error("Failed to disconnect Leopards.")
+      setIntegrations((prev) =>
+        prev.map((i) => i.key === "leopards" ? { ...i, status: "Not Connected", statusColor: "text-orange-600" } : i)
+      )
+      toast({ description: "Leopards Courier disconnected." })
+    } catch (err: any) {
+      toast({ description: err.message || "Error disconnecting Leopards.", variant: "destructive" })
+    } finally {
+      setLeopardsDisconnecting(false)
     }
   }
 
@@ -1967,6 +2065,42 @@ const handleFacebookConnect = async (agentId: number) => {
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         )
+                      ) : integration.isGtech ? (
+                        integration.status === "Connected" ? (
+                          <button
+                            className={DISCONNECT_BUTTON_STYLE}
+                            onClick={handleGtechDisconnect}
+                            disabled={gtechDisconnecting}
+                          >
+                            {gtechDisconnecting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Disconnecting...</> : "Disconnect"}
+                          </button>
+                        ) : (
+                          <button
+                            className={CONNECT_BUTTON_STYLE}
+                            onClick={() => { setGtechApiToken(""); setGtechBaseUrl("https://monark.gtech-api.com"); setIsGtechModalOpen(true) }}
+                          >
+                            Connect
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )
+                      ) : integration.isLeopards ? (
+                        integration.status === "Connected" ? (
+                          <button
+                            className={DISCONNECT_BUTTON_STYLE}
+                            onClick={handleLeopardsDisconnect}
+                            disabled={leopardsDisconnecting}
+                          >
+                            {leopardsDisconnecting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Disconnecting...</> : "Disconnect"}
+                          </button>
+                        ) : (
+                          <button
+                            className={CONNECT_BUTTON_STYLE}
+                            onClick={() => { setLeopardsApiKey(""); setLeopardsApiPassword(""); setIsLeopardsModalOpen(true) }}
+                          >
+                            Connect
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )
                       ) : integration.isPostEx ? (
                         integration.status === "Connected" ? (
                           <button
@@ -2445,6 +2579,65 @@ const handleFacebookConnect = async (agentId: number) => {
               disabled={gtechConnecting}
             >
               {gtechConnecting ? "Connecting..." : "Connect"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Leopards Modal */}
+      <Dialog open={isLeopardsModalOpen} onOpenChange={setIsLeopardsModalOpen}>
+        <DialogContent className="rounded-2xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-light text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-emerald-600">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5.9 14.1c-.39-.39-1.02-.39-1.41 0L18 15.09l-1.42 1.42c-.39.39-.39 1.02 0 1.41l1.54 1.53c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41l-1.53-1.54zM12 3L2 12h3v8H9v5l5-5v-5h-5v8h3L12 3z"/>
+                </svg>
+              </div>
+              Connect Leopards Courier
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-500 font-light">
+            Enter your Leopards Courier API key and password. You can find these in your Leopards merchant dashboard.
+          </p>
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="leopards-api-key" className="text-sm font-light text-slate-700">API Key</Label>
+              <Input
+                id="leopards-api-key"
+                value={leopardsApiKey}
+                onChange={(e) => setLeopardsApiKey(e.target.value)}
+                placeholder="Your API key..."
+                className="rounded-xl border-slate-200 font-mono text-sm"
+                onKeyDown={(e) => e.key === "Enter" && handleLeopardsConnect()}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="leopards-api-password" className="text-sm font-light text-slate-700">API Password</Label>
+              <Input
+                id="leopards-api-password"
+                type="password"
+                value={leopardsApiPassword}
+                onChange={(e) => setLeopardsApiPassword(e.target.value)}
+                placeholder="Your API password..."
+                className="rounded-xl border-slate-200 font-mono text-sm"
+                onKeyDown={(e) => e.key === "Enter" && handleLeopardsConnect()}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 mt-2">
+            <button
+              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-all duration-200 text-sm font-light"
+              onClick={() => setIsLeopardsModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all duration-200 text-sm font-light disabled:opacity-60"
+              onClick={handleLeopardsConnect}
+              disabled={leopardsConnecting}
+            >
+              {leopardsConnecting ? "Connecting..." : "Connect"}
             </button>
           </DialogFooter>
         </DialogContent>

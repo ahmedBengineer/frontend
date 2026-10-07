@@ -216,6 +216,14 @@ if (loading) {
                   <h1 className="text-xl md:text-2xl font-light text-slate-800 tracking-tight">Companies</h1>
                   <p className="text-xs md:text-sm text-slate-500 font-light">Manage all registered companies on your platform</p>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => router.push("/admin/dashboard/companies/tabs-permissions")}
+                    className="text-sm text-indigo-600 hover:text-indigo-800 font-light"
+                  >
+                    Tab Permissions
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
